@@ -273,14 +273,14 @@ def get_eligibility_period(contract_address: str, quicknode_url: str) -> Optiona
         return None
 
 
-def checkEligibility(graph_api_key: str, output_file: str = 'active_indexers.txt') -> bool:
+def checkEligibility(graph_api_key: str, output_file: str = 'active_indexers.json') -> bool:
     """
     Query The Graph's network subgraph to retrieve indexers with self stake > 0
-    and write the results to a text file.
+    and write the results to a JSON file.
     
     Args:
         graph_api_key: The Graph API key for querying the network subgraph
-        output_file: Path to the output file (default: active_indexers.txt)
+        output_file: Path to the output file (default: active_indexers.json)
         
     Returns:
         True if successful, False otherwise
@@ -322,28 +322,38 @@ def checkEligibility(graph_api_key: str, output_file: str = 'active_indexers.txt
             return False
         
         # Extract indexers from the response
-        indexers = data.get("data", {}).get("indexers", [])
+        indexers_raw = data.get("data", {}).get("indexers", [])
         
-        if not indexers:
+        if not indexers_raw:
             print("No active indexers found with self stake > 0")
             return False
         
-        # Write indexers to file
-        with open(output_file, 'w', encoding='utf-8') as f:
-            f.write("# Active Indexers with self stake > 0\n")
-            f.write(f"# Retrieved: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
-            f.write(f"# Total count: {len(indexers)}\n")
-            f.write("#\n")
-            f.write("# Format: address,display_name,staked_tokens\n")
-            f.write("#\n")
-            
-            for indexer in indexers:
-                address = indexer.get("id", "")
-                display_name = indexer.get("defaultDisplayName", "")
-                staked_tokens = indexer.get("stakedTokens", "0")
-                f.write(f"{address},{display_name},{staked_tokens}\n")
+        # Build the JSON structure
+        current_timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
         
-        print(f"✓ Retrieved {len(indexers)} active indexers")
+        output_data = {
+            "metadata": {
+                "retrieved": current_timestamp,
+                "total_count": len(indexers_raw)
+            },
+            "indexers": []
+        }
+        
+        # Process each indexer
+        for indexer in indexers_raw:
+            indexer_data = {
+                "address": indexer.get("id", ""),
+                "ens_name": "",
+                "status": "",
+                "eligible_until": ""
+            }
+            output_data["indexers"].append(indexer_data)
+        
+        # Write to JSON file
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(output_data, f, indent=2)
+        
+        print(f"✓ Retrieved {len(indexers_raw)} active indexers")
         print(f"✓ Results written to {output_file}")
         return True
         

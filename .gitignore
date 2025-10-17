@@ -39,4 +39,4 @@ logs/
 
 
 # Generated indexer data
-active_indexers.txt
+active_indexers.json

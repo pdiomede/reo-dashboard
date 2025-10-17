@@ -33,29 +33,48 @@ This system ensures that rewards are distributed only to indexers who actively s
 ### Data Flow
 
 ```
-┌─────────────────┐
-│  indexers.txt   │ ──┐
-└─────────────────┘   │
-                      │
-┌─────────────────┐   │
-│last_transaction │ ──┤
-│    .json        │   ├──► Python Script ──► HTML Dashboard
-└─────────────────┘   │   (generate_dashboard.py)
-                      │
-┌─────────────────┐   │
-│ QuickNode RPC   │ ──┘
-│  (Blockchain)   │
-└─────────────────┘
+┌──────────────────┐
+│ Network Subgraph │ ──┐
+│  (Active Indexers)│   │
+└──────────────────┘   │
+                       │
+┌──────────────────┐   │
+│  ENS Subgraph    │ ──┤
+│  (Name Resolution)│   ├──► retrieveActiveIndexers() 
+└──────────────────┘   │         │
+                       │         ▼
+┌──────────────────┐   │    active_indexers.json
+│ Contract: Oracle │ ──┤         │
+│  (Eligibility)   │   │         ▼
+└──────────────────┘   │    checkEligibility()
+                       │         │
+┌──────────────────┐   │         ▼
+│last_transaction  │ ──┤    renderIndexerTable()
+│     .json        │   │         │
+└──────────────────┘   │         ▼
+                       └──► HTML Dashboard (only eligible indexers)
 ```
 
 ### Main Components
 
-#### 1. **Data Loading**
-- **`read_indexers_data()`**: Reads the list of indexer addresses and ENS names from `indexers.txt`
-  - Format: `address,ens_name` (one per line)
-  - Handles missing ENS names gracefully
+#### 1. **Active Indexers Retrieval**
+- **`retrieveActiveIndexers()`**: Queries The Graph's network subgraph to get indexers with self stake > 0
+  - Queries network subgraph (deployment ID: `DZz4kDTdmzWLWsV373w2bSmoar3umKKH9y82SUKr5qmp`)
+  - Resolves ENS names via ENS subgraph (deployment ID: `5XqPmWe6gjyrJtFn9cLy237i4cWw2j9HcUJEXsP5qGtH`)
+  - Writes results to `active_indexers.json` with fields: `address`, `ens_name`, `is_eligible`, `status`, `eligible_until`, `eligibility_renewal_time`
 
-#### 2. **Transaction Data Retrieval**
+#### 2. **Eligibility Check (Two-Pass Approach)**
+- **`checkEligibility()`**: Checks eligibility status for all active indexers
+  - **Pass 1**: Calls `isEligible(address)` on contract for all indexers, stores result in `is_eligible` field
+  - **Pass 2**: Only for eligible indexers, calls `getEligibilityRenewalTime(address)` and updates `eligibility_renewal_time`
+  - Updates `active_indexers.json` with eligibility data
+
+#### 3. **Dashboard Rendering**
+- **`renderIndexerTable()`**: Reads `active_indexers.json` and filters only eligible indexers (`is_eligible = true`)
+  - Returns list of eligible indexers to display on the dashboard
+  - Indexers with `is_eligible = false` are excluded from the dashboard view
+
+#### 4. **Transaction Data Retrieval**
 The script tries multiple methods to fetch the last transaction data (in priority order):
 
 1. **`get_last_transaction_from_json()`**: 
@@ -69,17 +88,25 @@ The script tries multiple methods to fetch the last transaction data (in priorit
    - Falls back to Arbiscan API
    - Returns `None` if API is unavailable (no mock data used)
 
-#### 3. **Oracle Update Time**
+#### 5. **Oracle Update Time**
 - **`get_oracle_update_time()`**: 
   - Calls the contract's `getLastOracleUpdateTime()` function via RPC
   - Function selector: `0xbe626dd2`
   - Returns Unix timestamp of the last oracle update
 
-#### 4. **HTML Generation**
+#### 6. **Eligibility Period**
+- **`get_eligibility_period()`**: 
+  - Calls the contract's `getEligibilityPeriod()` function via RPC
+  - Function selector: `0xd0a5379e`
+  - Returns eligibility period in seconds
+
+#### 7. **HTML Generation**
 - **`generate_html_dashboard()`**: 
+  - Loads eligible indexers using `renderIndexerTable()`
   - Creates a complete, self-contained HTML file
   - Embeds all CSS styling
   - Includes JavaScript for search and sort functionality
+  - **Displays only eligible indexers** in the main table
   - Formats timestamps to human-readable dates
 
 ## File Structure
@@ -87,8 +114,9 @@ The script tries multiple methods to fetch the last transaction data (in priorit
 ```
 .
 ├── generate_dashboard.py    # Main script
-├── indexers.txt             # List of indexer addresses and ENS names
-├── last_transaction.json    # Cached transaction data (optional)
+├── indexers.txt             # Legacy file (still read for backwards compatibility)
+├── active_indexers.json     # Active indexers with eligibility data (generated)
+├── last_transaction.json    # Cached transaction data (generated)
 ├── grt.png                  # Logo image for the dashboard
 ├── index.html               # Generated dashboard (output)
 ├── .env                     # Environment variables (create from .env.example)
@@ -136,10 +164,15 @@ python3 generate_dashboard.py
 ```
 
 This will:
-1. Read indexer data from `indexers.txt`
-2. Fetch the latest transaction data
-3. Fetch the oracle update time from the contract
-4. Generate `index.html`
+1. **Retrieve active indexers** from The Graph's network subgraph (with self stake > 0)
+2. **Resolve ENS names** via ENS subgraph
+3. **Check eligibility** for each indexer by calling the contract's `isEligible()` function
+4. **Get renewal times** for eligible indexers via `getEligibilityRenewalTime()`
+5. Save all data to `active_indexers.json`
+6. **Render dashboard** showing only eligible indexers (`is_eligible = true`)
+7. Fetch the latest transaction data
+8. Fetch the oracle update time from the contract
+9. Generate `index.html`
 
 ### Opening the Dashboard
 
@@ -170,12 +203,42 @@ All configuration is managed through environment variables in the `.env` file:
 
 ## Data Sources
 
-### Input: `indexers.txt`
+### Generated: `active_indexers.json`
+This file is automatically generated by the script and contains all active indexers with their eligibility data.
+
+Structure:
+```json
+{
+  "metadata": {
+    "retrieved": "2025-10-17 20:00:00 UTC",
+    "total_count": 100,
+    "ens_resolved": 74
+  },
+  "indexers": [
+    {
+      "address": "0x0058223c6617cca7ce76fc929ec9724cd43d4542",
+      "ens_name": "grassets-tech-2.eth",
+      "is_eligible": true,
+      "status": "",
+      "eligible_until": "",
+      "eligibility_renewal_time": 1760696509
+    }
+  ]
+}
+```
+
+**Key Fields:**
+- `is_eligible`: Boolean indicating if the indexer is eligible for rewards (from contract's `isEligible()`)
+- `eligibility_renewal_time`: Unix timestamp of eligibility renewal (from contract's `getEligibilityRenewalTime()`)
+- **Only indexers with `is_eligible = true` are displayed on the dashboard**
+
+### Legacy: `indexers.txt` (Optional)
+This file is still read for backwards compatibility but is not used for the main dashboard table.
+
 Format:
 ```
 0x0058223c6617cca7ce76fc929ec9724cd43d4542,grassets-tech-2.eth
 0x01f17c392614c7ea586e7272ed348efee21b90a3,oraclegen-indexer.eth
-0x089f78d8cf0a5ae1b7a581b1910a73f8cb3e4774,darksiders-team.eth
 ```
 
 ### Cache: `last_transaction.json`
@@ -201,10 +264,12 @@ Displays before the table:
 - **Last Oracle Update Time**: Latest oracle update timestamp from the contract
 
 ### Indexers Table
+- **Eligibility Filtering**: Only displays indexers where `is_eligible = true`
 - **Sortable columns**: Click any header to sort
 - **Search functionality**: Real-time filtering by address or ENS name
-- **Statistics**: Shows total indexers and filtered count
+- **Statistics**: Shows total eligible indexers and filtered count
 - **Color-coded**: ENS names highlighted, missing ENS shown in gray
+- **Clickable addresses**: Each indexer address links to their profile on The Graph Explorer
 
 ## Technical Details
 

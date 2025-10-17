@@ -650,12 +650,48 @@ def read_indexers_data(filename: str = 'indexers.txt') -> List[Tuple[str, str]]:
     return indexers
 
 
+def renderIndexerTable(json_file: str = 'active_indexers.json') -> List[dict]:
+    """
+    Read eligible indexers from the active_indexers.json file.
+    Only returns indexers where is_eligible = true.
+    
+    Args:
+        json_file: Path to the active_indexers.json file
+        
+    Returns:
+        List of dictionaries containing eligible indexer data
+    """
+    eligible_indexers = []
+    
+    try:
+        if not os.path.exists(json_file):
+            print(f"⚠ {json_file} not found, no indexers to display")
+            return []
+        
+        with open(json_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        indexers = data.get("indexers", [])
+        
+        # Filter only eligible indexers
+        for indexer in indexers:
+            if indexer.get("is_eligible", False):
+                eligible_indexers.append(indexer)
+        
+        print(f"✓ Loaded {len(eligible_indexers)} eligible indexers from {json_file}")
+        return eligible_indexers
+        
+    except Exception as e:
+        print(f"Error reading {json_file}: {e}")
+        return []
+
+
 def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: str, api_key: Optional[str] = None, quicknode_url: Optional[str] = None) -> str:
     """
     Generate the HTML dashboard content.
     
     Args:
-        indexers: List of (address, ens_name) tuples
+        indexers: List of (address, ens_name) tuples (legacy parameter, not used)
         contract_address: The Sepolia contract address
         api_key: Arbiscan API key
         
@@ -663,6 +699,10 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         Complete HTML content as string
     """
     current_time = datetime.now(timezone.utc).strftime("%d %b %Y at %H:%M (UTC)")
+    
+    # Load eligible indexers from JSON file
+    print("Loading eligible indexers for dashboard...")
+    eligible_indexers = renderIndexerTable()
     
     # Fetch last transaction data
     print("Fetching last transaction data...")
@@ -1229,8 +1269,10 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 <tbody id="tableBody">
 """
 
-    # Add table rows
-    for i, (address, ens_name) in enumerate(indexers, 1):
+    # Add table rows from eligible indexers
+    for i, indexer in enumerate(eligible_indexers, 1):
+        address = indexer.get("address", "")
+        ens_name = indexer.get("ens_name", "")
         ens_display = ens_name if ens_name else "No ENS"
         ens_class = "ens-name" if ens_name else "empty-ens"
         explorer_url = f"https://thegraph.com/explorer/profile/{address}?view=Indexing&chain=arbitrum-one"
@@ -1249,8 +1291,8 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         </div>
         
         <div class="stats">
-            <div class="total-count">Total Indexers: <span id="totalCount">""" + str(len(indexers)) + """</span></div>
-            <div class="filtered-count">Showing: <span id="filteredCount">""" + str(len(indexers)) + """</span></div>
+            <div class="total-count">Total Eligible Indexers: <span id="totalCount">""" + str(len(eligible_indexers)) + """</span></div>
+            <div class="filtered-count">Showing: <span id="filteredCount">""" + str(len(eligible_indexers)) + """</span></div>
         </div>
     </div>
 
@@ -1259,8 +1301,10 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         const originalData = [
 """
 
-    # Add JavaScript data
-    for i, (address, ens_name) in enumerate(indexers, 1):
+    # Add JavaScript data from eligible indexers
+    for i, indexer in enumerate(eligible_indexers, 1):
+        address = indexer.get("address", "")
+        ens_name = indexer.get("ens_name", "")
         html_content += f"""            [{i}, "{address}", "{ens_name}", "", ""],
 """
 

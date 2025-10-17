@@ -14,7 +14,7 @@ from typing import List, Tuple, Optional
 from dotenv import load_dotenv
 
 # Version of the dashboard generator
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 
 
 def get_last_transaction_from_json(json_file: str = 'last_transaction.json') -> Optional[dict]:
@@ -280,7 +280,7 @@ def read_indexers_data(filename: str = 'indexers.txt') -> List[Tuple[str, str]]:
     return indexers
 
 
-def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: str = "0x9BED32d2b562043a426376b99d289fE821f5b04E", api_key: Optional[str] = None, quicknode_url: Optional[str] = None) -> str:
+def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: str, api_key: Optional[str] = None, quicknode_url: Optional[str] = None) -> str:
     """
     Generate the HTML dashboard content.
     
@@ -1035,11 +1035,14 @@ def main():
     print(f"Found {len(indexers)} indexers")
     
     # Load environment variables (no hardcoded fallbacks)
+    contract_address = os.getenv("CONTRACT_ADDRESS")
     api_key = os.getenv("ARBISCAN_API_KEY")
     quicknode_url = os.getenv("QUICK_NODE")
     
     # Validate required environment variables
     missing_vars = []
+    if not contract_address:
+        missing_vars.append("CONTRACT_ADDRESS")
     if not api_key:
         missing_vars.append("ARBISCAN_API_KEY")
     if not quicknode_url:
@@ -1056,7 +1059,7 @@ def main():
     
     print("✓ Configuration loaded successfully")
     print()
-    html_content = generate_html_dashboard(indexers, api_key=api_key, quicknode_url=quicknode_url)
+    html_content = generate_html_dashboard(indexers, contract_address=contract_address, api_key=api_key, quicknode_url=quicknode_url)
     
     # Write to index.html
     with open('index.html', 'w', encoding='utf-8') as file:

@@ -1,12 +1,4 @@
-# Eligibility Dashboard Generator
-
-A Python script that generates a static HTML dashboard displaying indexer information with real-time blockchain data from Arbitrum Sepolia.
-
-## Overview
-
-This dashboard provides a searchable, sortable table of indexers along with contract information including the last transaction and oracle update times fetched directly from the blockchain.
-
-## Context: Rewards Eligibility Oracle (GIP-0079)
+## Rewards Eligibility Oracle (GIP-0079)
 
 This dashboard is built to monitor indexers participating in [The Graph Protocol's Rewards Eligibility Oracle system](https://forum.thegraph.com/t/gip-0079-indexer-rewards-eligibility-oracle/6734).
 
@@ -130,11 +122,12 @@ The script reads configuration from a `.env` file in the project root.
 
 2. Edit `.env` and add your actual values:
    ```bash
+   CONTRACT_ADDRESS=0x9BED32d2b562043a426376b99d289fE821f5b04E
    ARBISCAN_API_KEY=your_arbiscan_api_key
    QUICK_NODE=your_quicknode_rpc_url
    ```
 
-The script will automatically load these variables. If the `.env` file is not found or variables are not set, it will use default/fallback values.
+The script will automatically load these variables. All three variables are required for the script to run.
 
 ### Running the Script
 
@@ -158,13 +151,22 @@ Or simply double-click `index.html` to open it in your browser.
 
 ## Configuration
 
-### Contract Address
-Default: `0x9BED32d2b562043a426376b99d289fE821f5b04E` (Arbitrum Sepolia)
+All configuration is managed through environment variables in the `.env` file:
 
-To change the contract address, modify the `generate_html_dashboard()` function parameter.
+### Contract Address
+- **Variable**: `CONTRACT_ADDRESS`
+- **Default**: `0x9BED32d2b562043a426376b99d289fE821f5b04E` (Arbitrum Sepolia)
+- **Purpose**: The Rewards Eligibility Oracle contract address
+
+### Arbiscan API Key
+- **Variable**: `ARBISCAN_API_KEY`
+- **Purpose**: Fetches transaction data from Arbiscan API
+- **Get yours**: [Arbiscan API Keys](https://arbiscan.io/myapikey)
 
 ### QuickNode RPC Endpoint
-The script uses a QuickNode endpoint for Arbitrum Sepolia. Update the `QUICK_NODE` environment variable or modify the default in `main()`.
+- **Variable**: `QUICK_NODE`
+- **Purpose**: Connects to Arbitrum Sepolia for real-time blockchain data
+- **Get yours**: [QuickNode](https://quicknode.com)
 
 ## Data Sources
 

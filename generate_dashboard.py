@@ -414,6 +414,7 @@ def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexe
             indexer_data = {
                 "address": address,
                 "ens_name": ens_mapping.get(address_lower, ""),
+                "is_eligible": False,
                 "status": "",
                 "eligible_until": "",
                 "eligibility_renewal_time": ""
@@ -437,11 +438,15 @@ def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexe
 
 def checkEligibility(contract_address: str, quicknode_url: str, input_file: str = 'active_indexers.json') -> bool:
     """
-    Check eligibility for each indexer by calling the contract's getEligibilityRenewalTime function.
-    Reads indexer addresses from the JSON file and updates each indexer's eligibility_renewal_time field.
+    Check eligibility for each indexer using a two-pass approach:
+    1. First pass: Call isEligible(address) for all indexers and store the result
+    2. Second pass: Only for eligible indexers, call getEligibilityRenewalTime(address)
+    
+    Reads indexer addresses from the JSON file and updates each indexer's is_eligible 
+    and eligibility_renewal_time fields.
     
     Args:
-        contract_address: The contract address
+        contract_address: The contract address (0x9BED32d2b562043a426376b99d289fE821f5b04E)
         quicknode_url: QuickNode RPC endpoint URL
         input_file: Path to the active_indexers.json file
         
@@ -464,15 +469,16 @@ def checkEligibility(contract_address: str, quicknode_url: str, input_file: str 
             print("No indexers found in JSON file")
             return False
         
-        print(f"Checking eligibility for {len(indexers)} indexers...")
+        # ========== PASS 1: Check isEligible for all indexers ==========
+        print(f"Pass 1: Checking isEligible status for {len(indexers)} indexers...")
         
-        # Function selector for getEligibilityRenewalTime(address)
-        # keccak256("getEligibilityRenewalTime(address)") = 0x5d4e8c95...
-        function_selector = '0x5d4e8c95'
+        # Function selector for isEligible(address)
+        # keccak256("isEligible(address)") = 0x6ba3f3e9...
+        is_eligible_selector = '0x6ba3f3e9'
         
-        updated_count = 0
+        eligible_count = 0
         
-        # Check eligibility for each indexer
+        # First pass: Check isEligible for each indexer
         for i, indexer in enumerate(indexers):
             address = indexer.get("address", "")
             if not address:
@@ -484,7 +490,75 @@ def checkEligibility(contract_address: str, quicknode_url: str, input_file: str 
                 address_param = address[2:] if address.startswith('0x') else address
                 address_param = address_param.lower().zfill(64)
                 
-                data_payload = function_selector + address_param
+                data_payload = is_eligible_selector + address_param
+                
+                # Make the eth_call
+                payload = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "eth_call",
+                    "params": [
+                        {
+                            "to": contract_address,
+                            "data": data_payload
+                        },
+                        "latest"
+                    ]
+                }
+                
+                response = requests.post(quicknode_url, json=payload, timeout=10)
+                response.raise_for_status()
+                
+                result = response.json()
+                
+                if "result" in result and result["result"] != "0x":
+                    # Parse the result (bool)
+                    # The result is a 32-byte hex string, bool is the last byte
+                    is_eligible = int(result["result"], 16) != 0
+                    indexer["is_eligible"] = is_eligible
+                    if is_eligible:
+                        eligible_count += 1
+                else:
+                    indexer["is_eligible"] = False
+                
+            except Exception as e:
+                print(f"⚠ Error checking isEligible for {address}: {e}")
+                indexer["is_eligible"] = False
+                continue
+            
+            # Progress indicator every 10 indexers
+            if (i + 1) % 10 == 0:
+                print(f"  Processed {i + 1}/{len(indexers)} indexers...")
+        
+        print(f"✓ Pass 1 complete: {eligible_count} eligible indexers found")
+        
+        # ========== PASS 2: Get renewal times for eligible indexers ==========
+        print(f"Pass 2: Getting eligibility renewal times for {eligible_count} eligible indexers...")
+        
+        # Function selector for getEligibilityRenewalTime(address)
+        # keccak256("getEligibilityRenewalTime(address)") = 0x5d4e8c95...
+        renewal_time_selector = '0x5d4e8c95'
+        
+        updated_count = 0
+        processed_count = 0
+        
+        # Second pass: Get renewal time only for eligible indexers
+        for i, indexer in enumerate(indexers):
+            # Skip if not eligible
+            if not indexer.get("is_eligible", False):
+                indexer["eligibility_renewal_time"] = 0
+                continue
+            
+            address = indexer.get("address", "")
+            if not address:
+                continue
+            
+            try:
+                # Prepare the function call data
+                address_param = address[2:] if address.startswith('0x') else address
+                address_param = address_param.lower().zfill(64)
+                
+                data_payload = renewal_time_selector + address_param
                 
                 # Make the eth_call
                 payload = {
@@ -514,20 +588,26 @@ def checkEligibility(contract_address: str, quicknode_url: str, input_file: str 
                     indexer["eligibility_renewal_time"] = 0
                 
             except Exception as e:
-                print(f"⚠ Error checking eligibility for {address}: {e}")
+                print(f"⚠ Error getting renewal time for {address}: {e}")
                 indexer["eligibility_renewal_time"] = 0
                 continue
             
-            # Progress indicator every 10 indexers
-            if (i + 1) % 10 == 0:
-                print(f"  Processed {i + 1}/{len(indexers)} indexers...")
+            processed_count += 1
+            
+            # Progress indicator every 10 eligible indexers
+            if processed_count % 10 == 0:
+                print(f"  Processed {processed_count}/{eligible_count} eligible indexers...")
+        
+        print(f"✓ Pass 2 complete: {updated_count} renewal times updated")
         
         # Write updated data back to JSON file
         with open(input_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
         
-        print(f"✓ Checked eligibility for {len(indexers)} indexers")
-        print(f"✓ Updated {updated_count} eligibility renewal times")
+        print(f"✓ Eligibility check complete:")
+        print(f"  - Total indexers: {len(indexers)}")
+        print(f"  - Eligible indexers: {eligible_count}")
+        print(f"  - Renewal times retrieved: {updated_count}")
         print(f"✓ Results written to {input_file}")
         return True
         

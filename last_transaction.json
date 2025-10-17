@@ -3,7 +3,7 @@
   "blockNumber": "205536308",
   "timeStamp": "1760696509",
   "status": "Success",
-  "readable_time": "Oct-17-2025 10:21:49",
-  "last_script_run": 1760729969,
-  "last_script_run_readable": "Oct-17-2025 19:39:29"
+  "last_oracle_run_readable_time": "Oct-17-2025 10:21:49",
+  "last_script_run": 1760730116,
+  "last_script_run_readable": "Oct-17-2025 19:41:56"
 }

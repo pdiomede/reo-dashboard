@@ -1101,6 +1101,17 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             color: #9CA3AF;
         }}
         
+        .footer-line a {{
+            color: #9CA3AF;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }}
+        
+        .footer-line a:hover {{
+            color: #F8F6FF;
+            text-decoration: underline;
+        }}
+        
         .footer-credits {{
             margin-top: 8px;
             font-size: 14px;

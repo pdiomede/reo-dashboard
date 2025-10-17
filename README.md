@@ -33,26 +33,26 @@ This system ensures that rewards are distributed only to indexers who actively s
 ### Data Flow
 
 ```
-┌──────────────────┐
-│ Network Subgraph │ ──┐
+┌───────────────────┐
+│ Network Subgraph  │ ──┐
 │  (Active Indexers)│   │
-└──────────────────┘   │
-                       │
-┌──────────────────┐   │
-│  ENS Subgraph    │ ──┤
+└───────────────────┘   │
+                        │
+┌───────────────────┐   │
+│  ENS Subgraph     │ ──┤
 │  (Name Resolution)│   ├──► retrieveActiveIndexers() 
-└──────────────────┘   │         │
-                       │         ▼
-┌──────────────────┐   │    active_indexers.json
-│ Contract: Oracle │ ──┤         │
-│  (Eligibility)   │   │         ▼
-└──────────────────┘   │    checkEligibility()
-                       │         │
-┌──────────────────┐   │         ▼
-│last_transaction  │ ──┤    renderIndexerTable()
-│     .json        │   │         │
-└──────────────────┘   │         ▼
-                       └──► HTML Dashboard (only eligible indexers)
+└───────────────────┘   │         │
+                        │         ▼
+┌───────────────────┐   │    active_indexers.json
+│ Contract: Oracle  │ ──┤         │
+│  (Eligibility)    │   │         ▼
+└───────────────────┘   │    checkEligibility()
+                        │         │
+┌───────────────────┐   │         ▼
+│last_transaction   │ ──┤    renderIndexerTable()
+│     .json         │   │         │
+└───────────────────┘   │         ▼
+                        └──► HTML Dashboard (only eligible indexers)
 ```
 
 ### Main Components

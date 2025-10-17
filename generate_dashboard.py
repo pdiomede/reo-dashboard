@@ -14,7 +14,7 @@ from typing import List, Tuple, Optional
 from dotenv import load_dotenv
 
 # Version of the dashboard generator
-VERSION = "0.0.2"
+VERSION = "0.0.3"
 
 
 def get_last_transaction_from_json(json_file: str = 'last_transaction.json') -> Optional[dict]:

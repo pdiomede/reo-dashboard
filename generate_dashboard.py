@@ -999,7 +999,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             <span>Last Update: {current_time}</span>
         </div>
         <div class="footer-credits">
-            Created with ❤️ by <a href="https://x.com/pdiomede" target="_blank">pdiomede</a> • <a href="https://github.com/pdiomede/reo-dashboard" target="_blank">Source Code</a>
+            Created with ❤️ by <a href="https://x.com/pdiomede" target="_blank">pdiomede</a> • View repo on GitHub <a href="https://github.com/pdiomede/reo-dashboard" target="_blank">here</a>
         </div>
     </div>
 </body>

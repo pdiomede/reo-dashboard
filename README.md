@@ -6,6 +6,27 @@ A Python script that generates a static HTML dashboard displaying indexer inform
 
 This dashboard provides a searchable, sortable table of indexers along with contract information including the last transaction and oracle update times fetched directly from the blockchain.
 
+## Context: Rewards Eligibility Oracle (GIP-0079)
+
+This dashboard is built to monitor indexers participating in [The Graph Protocol's Rewards Eligibility Oracle system](https://forum.thegraph.com/t/gip-0079-indexer-rewards-eligibility-oracle/6734).
+
+### What is the Rewards Eligibility Oracle?
+
+The **Rewards Eligibility Oracle** links eligibility for indexing rewards to the provision of quality service to consumers. Only indexers meeting minimum performance standards receive rewards, ensuring incentives align with providing value to the network.
+
+**Key Features:**
+- **Off-chain Oracle Nodes**: Assess indexer performance against published criteria
+- **On-chain Oracle Contract**: Tracks which indexers are eligible for rewards
+- **Service Quality Metrics**: Indexers are evaluated on actual service provision
+- **14-Day Eligibility Period**: Qualifying indexers have their eligibility renewed for 14 days
+- **Performance-Based**: Ineligible indexers are denied rewards until they improve service quality
+
+This system ensures that rewards are distributed only to indexers who actively serve queries and maintain quality service, rather than simply allocating tokens based on stake alone.
+
+**Learn More:**
+- [GIP-0079 Forum Discussion](https://forum.thegraph.com/t/gip-0079-indexer-rewards-eligibility-oracle/6734)
+- [Full GIP-0079 Proposal](https://forum.thegraph.com/t/gip-0079-indexer-rewards-eligibility-oracle/6734)
+
 ## Features
 
 - 📊 **Sortable Table**: Click column headers to sort by number, address, or ENS name

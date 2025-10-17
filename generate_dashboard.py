@@ -275,8 +275,8 @@ def get_eligibility_period(contract_address: str, quicknode_url: str) -> Optiona
 
 def checkEligibility(graph_api_key: str, output_file: str = 'active_indexers.json') -> bool:
     """
-    Query The Graph's network subgraph to retrieve indexers with self stake > 0
-    and write the results to a JSON file.
+    Query The Graph's network subgraph to retrieve indexers with self stake > 0,
+    resolve their ENS names, and write the results to a JSON file.
     
     Args:
         graph_api_key: The Graph API key for querying the network subgraph
@@ -287,13 +287,17 @@ def checkEligibility(graph_api_key: str, output_file: str = 'active_indexers.jso
     """
     try:
         # The Graph Network subgraph deployment ID
-        deployment_id = "DZz4kDTdmzWLWsV373w2bSmoar3umKKH9y82SUKr5qmp"
+        network_deployment_id = "DZz4kDTdmzWLWsV373w2bSmoar3umKKH9y82SUKr5qmp"
         
-        # Construct the Gateway API URL
-        url = f"https://gateway.thegraph.com/api/{graph_api_key}/subgraphs/id/{deployment_id}"
+        # ENS subgraph deployment ID
+        ens_deployment_id = "5XqPmWe6gjyrJtFn9cLy237i4cWw2j9HcUJEXsP5qGtH"
+        
+        # Construct the Gateway API URLs
+        network_url = f"https://gateway.thegraph.com/api/{graph_api_key}/subgraphs/id/{network_deployment_id}"
+        ens_url = f"https://gateway.thegraph.com/api/{graph_api_key}/subgraphs/id/{ens_deployment_id}"
         
         # GraphQL query to get indexers with self stake > 0
-        query = """
+        indexers_query = """
         {
           indexers(first: 1000, where: {stakedTokens_gt: "0"}) {
             id
@@ -305,10 +309,10 @@ def checkEligibility(graph_api_key: str, output_file: str = 'active_indexers.jso
         
         print(f"Querying network subgraph for active indexers...")
         
-        # Make the GraphQL request
+        # Make the GraphQL request to network subgraph
         response = requests.post(
-            url,
-            json={"query": query},
+            network_url,
+            json={"query": indexers_query},
             headers={"Content-Type": "application/json"},
             timeout=30
         )
@@ -328,22 +332,85 @@ def checkEligibility(graph_api_key: str, output_file: str = 'active_indexers.jso
             print("No active indexers found with self stake > 0")
             return False
         
+        print(f"✓ Retrieved {len(indexers_raw)} active indexers")
+        
+        # Extract all addresses for ENS lookup
+        addresses = [indexer.get("id", "").lower() for indexer in indexers_raw]
+        
+        # Query ENS subgraph to resolve names
+        print(f"Querying ENS subgraph for name resolution...")
+        
+        # Build ENS query - query in batches if needed
+        ens_mapping = {}
+        batch_size = 100
+        
+        for i in range(0, len(addresses), batch_size):
+            batch_addresses = addresses[i:i+batch_size]
+            
+            # Build the where clause for this batch
+            addresses_filter = '", "'.join(batch_addresses)
+            ens_query = f"""
+            {{
+              domains(first: 1000, where: {{resolvedAddress_in: ["{addresses_filter}"]}}) {{
+                name
+                resolvedAddress {{
+                  id
+                }}
+              }}
+            }}
+            """
+            
+            try:
+                ens_response = requests.post(
+                    ens_url,
+                    json={"query": ens_query},
+                    headers={"Content-Type": "application/json"},
+                    timeout=30
+                )
+                ens_response.raise_for_status()
+                
+                ens_data = ens_response.json()
+                
+                if "errors" in ens_data:
+                    print(f"⚠ ENS query error for batch {i//batch_size + 1}: {ens_data['errors']}")
+                    continue
+                
+                # Map addresses to ENS names
+                domains = ens_data.get("data", {}).get("domains", [])
+                for domain in domains:
+                    resolved_addr = domain.get("resolvedAddress", {})
+                    if resolved_addr:
+                        addr_id = resolved_addr.get("id", "").lower()
+                        ens_name = domain.get("name", "")
+                        if addr_id and ens_name:
+                            ens_mapping[addr_id] = ens_name
+                
+            except Exception as e:
+                print(f"⚠ Error querying ENS for batch {i//batch_size + 1}: {e}")
+                continue
+        
+        print(f"✓ Resolved {len(ens_mapping)} ENS names")
+        
         # Build the JSON structure
         current_timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
         
         output_data = {
             "metadata": {
                 "retrieved": current_timestamp,
-                "total_count": len(indexers_raw)
+                "total_count": len(indexers_raw),
+                "ens_resolved": len(ens_mapping)
             },
             "indexers": []
         }
         
-        # Process each indexer
+        # Process each indexer with ENS name
         for indexer in indexers_raw:
+            address = indexer.get("id", "")
+            address_lower = address.lower()
+            
             indexer_data = {
-                "address": indexer.get("id", ""),
-                "ens_name": "",
+                "address": address,
+                "ens_name": ens_mapping.get(address_lower, ""),
                 "status": "",
                 "eligible_until": ""
             }
@@ -353,12 +420,11 @@ def checkEligibility(graph_api_key: str, output_file: str = 'active_indexers.jso
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(output_data, f, indent=2)
         
-        print(f"✓ Retrieved {len(indexers_raw)} active indexers")
         print(f"✓ Results written to {output_file}")
         return True
         
     except requests.exceptions.RequestException as e:
-        print(f"Request error querying network subgraph: {e}")
+        print(f"Request error querying subgraphs: {e}")
         return False
     except Exception as e:
         print(f"Error in checkEligibility: {e}")

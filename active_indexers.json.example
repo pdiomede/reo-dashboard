@@ -1,18 +1,19 @@
 {
   "metadata": {
     "retrieved": "2025-10-17 19:50:00 UTC",
-    "total_count": 3
+    "total_count": 3,
+    "ens_resolved": 2
   },
   "indexers": [
     {
       "address": "0x0058223c6617cca7ce76fc929ec9724cd43d4542",
-      "ens_name": "",
+      "ens_name": "grassets-tech-2.eth",
       "status": "",
       "eligible_until": ""
     },
     {
       "address": "0x01f17c392614c7ea586e7272ed348efee21b90a3",
-      "ens_name": "",
+      "ens_name": "oraclegen-indexer.eth",
       "status": "",
       "eligible_until": ""
     },

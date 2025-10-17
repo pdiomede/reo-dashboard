@@ -273,6 +273,88 @@ def get_eligibility_period(contract_address: str, quicknode_url: str) -> Optiona
         return None
 
 
+def checkEligibility(graph_api_key: str, output_file: str = 'active_indexers.txt') -> bool:
+    """
+    Query The Graph's network subgraph to retrieve indexers with self stake > 0
+    and write the results to a text file.
+    
+    Args:
+        graph_api_key: The Graph API key for querying the network subgraph
+        output_file: Path to the output file (default: active_indexers.txt)
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # The Graph Network subgraph deployment ID
+        deployment_id = "DZz4kDTdmzWLWsV373w2bSmoar3umKKH9y82SUKr5qmp"
+        
+        # Construct the Gateway API URL
+        url = f"https://gateway.thegraph.com/api/{graph_api_key}/subgraphs/id/{deployment_id}"
+        
+        # GraphQL query to get indexers with self stake > 0
+        query = """
+        {
+          indexers(first: 1000, where: {stakedTokens_gt: "0"}) {
+            id
+            stakedTokens
+            defaultDisplayName
+          }
+        }
+        """
+        
+        print(f"Querying network subgraph for active indexers...")
+        
+        # Make the GraphQL request
+        response = requests.post(
+            url,
+            json={"query": query},
+            headers={"Content-Type": "application/json"},
+            timeout=30
+        )
+        response.raise_for_status()
+        
+        data = response.json()
+        
+        # Check for errors in the response
+        if "errors" in data:
+            print(f"GraphQL Error: {data['errors']}")
+            return False
+        
+        # Extract indexers from the response
+        indexers = data.get("data", {}).get("indexers", [])
+        
+        if not indexers:
+            print("No active indexers found with self stake > 0")
+            return False
+        
+        # Write indexers to file
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write("# Active Indexers with self stake > 0\n")
+            f.write(f"# Retrieved: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
+            f.write(f"# Total count: {len(indexers)}\n")
+            f.write("#\n")
+            f.write("# Format: address,display_name,staked_tokens\n")
+            f.write("#\n")
+            
+            for indexer in indexers:
+                address = indexer.get("id", "")
+                display_name = indexer.get("defaultDisplayName", "")
+                staked_tokens = indexer.get("stakedTokens", "0")
+                f.write(f"{address},{display_name},{staked_tokens}\n")
+        
+        print(f"✓ Retrieved {len(indexers)} active indexers")
+        print(f"✓ Results written to {output_file}")
+        return True
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Request error querying network subgraph: {e}")
+        return False
+    except Exception as e:
+        print(f"Error in checkEligibility: {e}")
+        return False
+
+
 def read_indexers_data(filename: str = 'indexers.txt') -> List[Tuple[str, str]]:
     """
     Read indexer data from the text file.
@@ -1054,6 +1136,16 @@ def main():
         print("  To use custom values:")
         print("    1. Copy .env.example to .env")
         print("    2. Edit .env with your API keys")
+        print()
+    
+    # Check eligibility by querying network subgraph
+    graph_api_key = os.getenv("GRAPH_API_KEY")
+    if graph_api_key and graph_api_key != "your_graph_api_key_here":
+        print()
+        checkEligibility(graph_api_key)
+        print()
+    else:
+        print("⚠ GRAPH_API_KEY not set, skipping eligibility check")
         print()
     
     # Read indexer data

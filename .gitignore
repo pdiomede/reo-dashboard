@@ -37,3 +37,6 @@ logs/
 # Generated files (optional - comment out if you want to commit generated HTML)
 # index.html
 
+
+# Generated indexer data
+active_indexers.txt

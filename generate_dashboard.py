@@ -962,10 +962,24 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         .address-link {{
             text-decoration: none;
             transition: opacity 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }}
         
         .address-link:hover .address {{
             color: #9CA3AF;
+        }}
+        
+        .external-link-icon {{
+            width: 12px;
+            height: 12px;
+            opacity: 0.6;
+            transition: opacity 0.3s ease;
+        }}
+        
+        .address-link:hover .external-link-icon {{
+            opacity: 1;
         }}
         
         .ens-name {{
@@ -1068,7 +1082,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 15px;
+            gap: 5px;
             flex-wrap: wrap;
         }}
         
@@ -1287,7 +1301,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         
         html_content += f"""                    <tr>
                         <td>{i}</td>
-                        <td><a href="{explorer_url}" target="_blank" class="address-link"><span class="address">{address}</span></a></td>
+                        <td><a href="{explorer_url}" target="_blank" class="address-link"><span class="address">{address}</span><svg class="external-link-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2.5a.5.5 0 0 0-.5-.5h-6a.5.5 0 0 0 0 1h4.793L8.146 7.146a.5.5 0 0 0 .708.708L13 3.707V8.5a.5.5 0 0 0 1 0v-6z"/><path d="M4.5 4a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V9a.5.5 0 0 0-1 0v3H5V5h3a.5.5 0 0 0 0-1h-3.5z"/></svg></a></td>
                         <td><span class="{ens_class}">{ens_display}</span></td>
                         <td></td>
                         <td></td>

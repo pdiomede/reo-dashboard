@@ -1,0 +1,11 @@
+# Python dependencies for the Eligibility Dashboard Generator
+
+# HTTP requests library for API calls and RPC
+requests>=2.31.0
+
+# Environment variable management from .env files
+python-dotenv>=1.0.0
+
+# Cryptography for keccak256 hashing (contract function selectors)
+pycryptodome>=3.19.0
+

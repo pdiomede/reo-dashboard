@@ -1,0 +1,1295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eligibility Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0C0A1D;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #0C0A1D;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+            border: 1px solid #9CA3AF;
+        }
+        
+        .header {
+            background: #0C0A1D;
+            color: #F8F6FF;
+            padding: 30px;
+            text-align: center;
+            border-bottom: 1px solid #9CA3AF;
+        }
+        
+        .title-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .header-icon {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin: 0;
+            font-weight: 300;
+        }
+        
+        .header .subtitle {
+            font-size: 0.95em;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        .search-container {
+            padding: 25px 30px;
+            background: #0C0A1D;
+            border-bottom: 1px solid #9CA3AF;
+        }
+        
+        .search-box {
+            width: 100%;
+            padding: 15px 20px;
+            border: 2px solid #9CA3AF;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s ease;
+            background: #0C0A1D;
+            color: #F8F6FF;
+        }
+        
+        .search-box:focus {
+            border-color: #F8F6FF;
+            box-shadow: 0 0 0 3px rgba(248, 246, 255, 0.1);
+        }
+        
+        .search-box::placeholder {
+            color: #9CA3AF;
+        }
+        
+        .legend {
+            padding: 20px 30px;
+            background: #0C0A1D;
+            border-bottom: 1px solid #9CA3AF;
+        }
+        
+        .legend-title {
+            color: #F8F6FF;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .legend-items {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+        
+        .legend-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 11px;
+        }
+        
+        .legend-badge.good {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid #22c55e;
+        }
+        
+        .legend-badge.grace {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid #fbbf24;
+        }
+        
+        .legend-badge.ineligible {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+        
+        .legend-description {
+            color: #9CA3AF;
+        }
+        
+        .table-container {
+            padding: 0 30px 30px;
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: #0C0A1D;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            border: 1px solid #9CA3AF;
+        }
+        
+        th {
+            background: #0C0A1D;
+            color: #9CA3AF;
+            padding: 20px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+            border-bottom: 1px solid #9CA3AF;
+        }
+        
+        th:hover {
+            background: #1a1825;
+        }
+        
+        th.sortable::after {
+            content: ' ↕';
+            opacity: 0.5;
+            font-size: 12px;
+        }
+        
+        th.sort-asc::after {
+            content: ' ↑';
+            opacity: 1;
+        }
+        
+        th.sort-desc::after {
+            content: ' ↓';
+            opacity: 1;
+        }
+        
+        td {
+            padding: 18px 15px;
+            border-bottom: 1px solid #9CA3AF;
+            font-size: 14px;
+            color: #F8F6FF;
+        }
+        
+        tr:hover {
+            background-color: #1a1825;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #0C0A1D;
+        }
+        
+        tr:nth-child(even):hover {
+            background-color: #1a1825;
+        }
+        
+        .address {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #F8F6FF;
+            word-break: break-all;
+        }
+        
+        .address-link {
+            text-decoration: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .address-link:hover .address {
+            color: #9CA3AF;
+        }
+        
+        .ens-name {
+            color: #F8F6FF;
+            font-weight: 500;
+        }
+        
+        .empty-ens {
+            color: #9CA3AF;
+            font-style: italic;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 30px;
+            background: #0C0A1D;
+            border-top: 1px solid #9CA3AF;
+            font-size: 14px;
+            color: #F8F6FF;
+        }
+        
+        .total-count {
+            font-weight: 600;
+            color: #F8F6FF;
+        }
+        
+        .filtered-count {
+            color: #F8F6FF;
+        }
+        
+        .contract-info {
+            padding: 25px 30px;
+            background: #0C0A1D;
+            border-top: 1px solid #9CA3AF;
+        }
+        
+        .contract-info h3 {
+            color: #F8F6FF;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #9CA3AF;
+        }
+        
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            color: #9CA3AF;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        
+        .info-value {
+            color: #F8F6FF;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            word-break: break-all;
+            text-align: right;
+            max-width: 60%;
+        }
+        
+        .transaction-hash {
+            color: #F8F6FF;
+            text-decoration: none;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .transaction-hash:hover {
+            color: #9CA3AF;
+            text-decoration: underline;
+        }
+        
+        .error-message {
+            color: #9CA3AF;
+            font-style: italic;
+        }
+        
+        .footer {
+            padding: 20px 30px;
+            background: #0C0A1D;
+            border-top: 1px solid #9CA3AF;
+            text-align: center;
+            color: #9CA3AF;
+            font-size: 12px;
+            margin-top: 0;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .version {
+            font-weight: 600;
+            color: #9CA3AF;
+        }
+        
+        .footer-separator {
+            color: #9CA3AF;
+        }
+        
+        .footer-credits {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #9CA3AF;
+        }
+        
+        .footer-credits a {
+            color: #9CA3AF;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        
+        .footer-credits a:hover {
+            color: #F8F6FF;
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                border-radius: 10px;
+            }
+            
+            .header {
+                padding: 20px;
+            }
+            
+            .title-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .header-icon {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .search-container, .table-container {
+                padding: 20px;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title-container">
+                <img src="grt.png" alt="GRT" class="header-icon">
+                <h1>Eligibility Dashboard</h1>
+            </div>
+            <div class="subtitle">Last Update: 17 Oct 2025 at 18:08 (UTC)</div>
+        </div>
+        
+        <div class="search-container">
+            <input type="text" 
+                   class="search-box" 
+                   id="searchInput" 
+                   placeholder="Search by indexer address or ENS name..."
+                   autocomplete="off">
+        </div>
+        
+        <div class="contract-info">
+            <h3>Contract Information (FOR DEBUG ONLY)</h3>
+            <div class="info-item">
+                <span class="info-label">Sepolia Contract on Arbitrum:</span>
+                <span class="info-value"><a href="https://sepolia.arbiscan.io/address/0x9BED32d2b562043a426376b99d289fE821f5b04E" target="_blank" class="transaction-hash">0x9BED32d2b562043a426376b99d289fE821f5b04E</a></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Last Transaction ID:</span>
+                <span class="info-value"><a href="https://sepolia.arbiscan.io/tx/0x4401f694b80775533566053f88026220e1eab4c84f771e5b600df76f89a768bc" target="_blank" class="transaction-hash">0x4401f694b80775533566053f88026220e1eab4c84f771e5b600df76f89a768bc</a></span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Block Number:</span>
+                <span class="info-value">205536308</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Transaction Time:</span>
+                <span class="info-value">17 Oct 2025 at 10:21 (UTC)</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Last Oracle Update Time:</span>
+                <span class="info-value">17 Oct 2025 at 10:21:49 (UTC)</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Eligibility Period:</span>
+                <span class="info-value">1209600 seconds (14.0 days)</span>
+            </div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-title">Status Legend</div>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <span class="legend-badge good">Good</span>
+                    <span class="legend-description">Indexer is eligible</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-badge grace">Grace</span>
+                    <span class="legend-description">Grace period active</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-badge ineligible">Ineligible</span>
+                    <span class="legend-description">Not eligible</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <table id="indexersTable">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-column="0">#</th>
+                        <th class="sortable" data-column="1">Indexer Address</th>
+                        <th class="sortable" data-column="2">ENS Name</th>
+                        <th class="sortable" data-column="3">Status</th>
+                        <th class="sortable" data-column="4">Eligible Until</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr>
+                        <td>1</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x0058223c6617cca7ce76fc929ec9724cd43d4542?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x0058223c6617cca7ce76fc929ec9724cd43d4542</span></a></td>
+                        <td><span class="ens-name">grassets-tech-2.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x01f17c392614c7ea586e7272ed348efee21b90a3?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x01f17c392614c7ea586e7272ed348efee21b90a3</span></a></td>
+                        <td><span class="ens-name">oraclegen-indexer.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>3</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x089f78d8cf0a5ae1b7a581b1910a73f8cb3e4774?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x089f78d8cf0a5ae1b7a581b1910a73f8cb3e4774</span></a></td>
+                        <td><span class="ens-name">darksiders-team.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>4</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x0b9d582b7fdd387ba13ad7f453d49af255a8ed5e?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x0b9d582b7fdd387ba13ad7f453d49af255a8ed5e</span></a></td>
+                        <td><span class="ens-name">dapplooker-indexer.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>5</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x0fd8fd1dc8162148cb9413062fe6c6b144335dbf?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x0fd8fd1dc8162148cb9413062fe6c6b144335dbf</span></a></td>
+                        <td><span class="ens-name">a1.protofire.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>6</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x17def1a43a323c711c7a32101ecf41e58eff54a2?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x17def1a43a323c711c7a32101ecf41e58eff54a2</span></a></td>
+                        <td><span class="ens-name">rampdefi4.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>7</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x1b7e0068ca1d7929c8c56408d766e1510e54d98d?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x1b7e0068ca1d7929c8c56408d766e1510e54d98d</span></a></td>
+                        <td><span class="ens-name">suntzu-indexer-arb.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>8</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x1b92e4cba0f82c85c1298af861247849988c788c?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x1b92e4cba0f82c85c1298af861247849988c788c</span></a></td>
+                        <td><span class="ens-name">vincenttaglia-indexer.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>9</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x269ebeee083ce6f70486a67dc8036a889bf322a9?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x269ebeee083ce6f70486a67dc8036a889bf322a9</span></a></td>
+                        <td><span class="ens-name">thomasblock.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>10</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x2b3c7d1ef5fdfc0557934019c531d3e70d6200ae?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x2b3c7d1ef5fdfc0557934019c531d3e70d6200ae</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>11</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x2e15f3f0d37b191c33ee06e953c8cce4c493b47a?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x2e15f3f0d37b191c33ee06e953c8cce4c493b47a</span></a></td>
+                        <td><span class="ens-name">ai.swiftstaking.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>12</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x2e8d26e9b0d280738728e71c37bf05e70a636238?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x2e8d26e9b0d280738728e71c37bf05e70a636238</span></a></td>
+                        <td><span class="ens-name">moonli.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>13</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x2f09092aacd80196fc984908c5a9a7ab3ee4f1ce?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x2f09092aacd80196fc984908c5a9a7ab3ee4f1ce</span></a></td>
+                        <td><span class="ens-name">p2p-org-arbitrum.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>14</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x326c584e0f0eab1f1f83c93cc6ae1acc0feba0bc?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x326c584e0f0eab1f1f83c93cc6ae1acc0feba0bc</span></a></td>
+                        <td><span class="ens-name">graphtronauts-arbitrum.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>15</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x32bbd16a94ebb289edceebe77f35acc82664157b?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x32bbd16a94ebb289edceebe77f35acc82664157b</span></a></td>
+                        <td><span class="ens-name">rampdefi3.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>16</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x345c9a221e4caa15f78fb8078c441745de48a225?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x345c9a221e4caa15f78fb8078c441745de48a225</span></a></td>
+                        <td><span class="ens-name">0xfury.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>17</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x35917c0eb91d2e21bef40940d028940484230c06?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x35917c0eb91d2e21bef40940d028940484230c06</span></a></td>
+                        <td><span class="ens-name">streamingfastindexer.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>18</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x3717cef8020bddee7a18f4efb2bfa88fefdcb1bc?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x3717cef8020bddee7a18f4efb2bfa88fefdcb1bc</span></a></td>
+                        <td><span class="ens-name">pinax2.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>19</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x3863a65ce278a240f9aa2a4b4a48493be59e6139?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x3863a65ce278a240f9aa2a4b4a48493be59e6139</span></a></td>
+                        <td><span class="ens-name">indexer.nftx.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>20</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x38f412c8d6346a17a53ff9ceecd2e01acecd27c0?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x38f412c8d6346a17a53ff9ceecd2e01acecd27c0</span></a></td>
+                        <td><span class="ens-name">graphops.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>21</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x3b9ba748691f135b71582dc3292e5e3ed7e13341?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x3b9ba748691f135b71582dc3292e5e3ed7e13341</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>22</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x3e1536fc83cd5bed83a521a26034ff3e59c6a7c4?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x3e1536fc83cd5bed83a521a26034ff3e59c6a7c4</span></a></td>
+                        <td><span class="ens-name">differential-graph.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>23</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x3f74870f80ff7449fe4c6ff257da5fa72734c970?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x3f74870f80ff7449fe4c6ff257da5fa72734c970</span></a></td>
+                        <td><span class="ens-name">stake🦑squid-2.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>24</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x4207df52f7ff229364899b21e9c4ad36d3d42981?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x4207df52f7ff229364899b21e9c4ad36d3d42981</span></a></td>
+                        <td><span class="ens-name">lux8-net.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>25</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x474e571ab6dd77489ec3c7ddf9cbc893fcba684c?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x474e571ab6dd77489ec3c7ddf9cbc893fcba684c</span></a></td>
+                        <td><span class="ens-name">allnodescom.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>26</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x4d67938e9b07681526fe0345a45b770bba88c659?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x4d67938e9b07681526fe0345a45b770bba88c659</span></a></td>
+                        <td><span class="ens-name">4block-team.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>27</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x4e5c87772c29381bcabc58c3f182b6633b5a274a?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x4e5c87772c29381bcabc58c3f182b6633b5a274a</span></a></td>
+                        <td><span class="ens-name">indexer.datanexus.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>28</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x51637a35f7f054c98ed51904de939b9561d37885?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x51637a35f7f054c98ed51904de939b9561d37885</span></a></td>
+                        <td><span class="ens-name">kolbin.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>29</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x53dbbc9d916b1840a2c4c26b150ba2e13f36e10f?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x53dbbc9d916b1840a2c4c26b150ba2e13f36e10f</span></a></td>
+                        <td><span class="ens-name">thoalt-indexer.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>30</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x550c1f4814a85aa10f5f061ca8c45e2ee9620226?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x550c1f4814a85aa10f5f061ca8c45e2ee9620226</span></a></td>
+                        <td><span class="ens-name">experimental.infradao.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>31</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x59749d1fa9635cd0413aeff5ee295490a7e87f54?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x59749d1fa9635cd0413aeff5ee295490a7e87f54</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>32</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x5af569b692b0598721461027dbbecde74d465d99?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x5af569b692b0598721461027dbbecde74d465d99</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>33</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x5b3c8f7245dfbd9bea22d9c4b975df60a638e5a3?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x5b3c8f7245dfbd9bea22d9c4b975df60a638e5a3</span></a></td>
+                        <td><span class="ens-name">thegraph.mind-heart-soul.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>34</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x5ddee9720e17aad28febb55643cd8ab50c51c60b?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x5ddee9720e17aad28febb55643cd8ab50c51c60b</span></a></td>
+                        <td><span class="ens-name">maplenodes.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>35</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x600f2b53719e1dbacf340572b31a9df9921b82fa?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x600f2b53719e1dbacf340572b31a9df9921b82fa</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>36</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x63c9dc729ba7a22bb8605216b24a34b902e5fe94?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x63c9dc729ba7a22bb8605216b24a34b902e5fe94</span></a></td>
+                        <td><span class="ens-name">infradao.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>37</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x6f3ce93a09f30f18d728d2364268b5fe9444b89e?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x6f3ce93a09f30f18d728d2364268b5fe9444b89e</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>38</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x6f8a032b4b1ee622ef2f0fc091bdbb98cfae81a3?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x6f8a032b4b1ee622ef2f0fc091bdbb98cfae81a3</span></a></td>
+                        <td><span class="ens-name">indexer.semiotic.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>39</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x6f9bb7e454f5b3eb2310343f0e99269dc2bb8a1d?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x6f9bb7e454f5b3eb2310343f0e99269dc2bb8a1d</span></a></td>
+                        <td><span class="ens-name">cp0x.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>40</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x735f422922bd4d459ea491f46e1bb9295b89f961?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x735f422922bd4d459ea491f46e1bb9295b89f961</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>41</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x74dbb201ecc0b16934e68377bc13013883d9417b?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x74dbb201ecc0b16934e68377bc13013883d9417b</span></a></td>
+                        <td><span class="ens-name">rickydata-indexer.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>42</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x7bb834017672b1135466661d8dd69c5dd0b3bf51?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x7bb834017672b1135466661d8dd69c5dd0b3bf51</span></a></td>
+                        <td><span class="ens-name">dataservices.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>43</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x8f689a83dd52eaa1d5ad6a40c46189b4a0d70b06?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x8f689a83dd52eaa1d5ad6a40c46189b4a0d70b06</span></a></td>
+                        <td><span class="ens-name">art3mis-cloud.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>44</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x9082f497bdc512d08ffde50d6fce28e72c2addcf?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x9082f497bdc512d08ffde50d6fce28e72c2addcf</span></a></td>
+                        <td><span class="ens-name">holographic-indexer.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>45</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x920fdeb00ee04dd72f62d8a8f80f13c82ef76c1e?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x920fdeb00ee04dd72f62d8a8f80f13c82ef76c1e</span></a></td>
+                        <td><span class="ens-name">braindexer.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>46</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x958ad15ea21fb79b935524cf90c90276031bee20?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x958ad15ea21fb79b935524cf90c90276031bee20</span></a></td>
+                        <td><span class="ens-name">hashkeycloud.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>47</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0x9da1017766bfeb2835db4f811516eea68996538b?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0x9da1017766bfeb2835db4f811516eea68996538b</span></a></td>
+                        <td><span class="ens-name">ryabina.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>48</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xa01b06b0e9feb016d5ab669ce89d059bc666e569?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xa01b06b0e9feb016d5ab669ce89d059bc666e569</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>49</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xa181d0f242b3730f8a244cc94eda05faf17a43e8?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xa181d0f242b3730f8a244cc94eda05faf17a43e8</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>50</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xa28a99b0219a34142a9398a19460fcd69250a2b2?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xa28a99b0219a34142a9398a19460fcd69250a2b2</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>51</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xa4d629ba2ffb3321008d8cec37cca077696bf24d?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xa4d629ba2ffb3321008d8cec37cca077696bf24d</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>52</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xa6ff993e0f6253f1b7f55c873577a2f0f0ceb325?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xa6ff993e0f6253f1b7f55c873577a2f0f0ceb325</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>53</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xa9b5da22440dedd72535ec0525582ca0b63be5e1?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xa9b5da22440dedd72535ec0525582ca0b63be5e1</span></a></td>
+                        <td><span class="ens-name">pdp-indexer.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>54</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xaa988dcb035518bc0e20082a3148a5d3dfd1776d?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xaa988dcb035518bc0e20082a3148a5d3dfd1776d</span></a></td>
+                        <td><span class="ens-name">stake🦑squid-1.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>55</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xaddd3e23599d2b7267067afbcd18830aefca640a?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xaddd3e23599d2b7267067afbcd18830aefca640a</span></a></td>
+                        <td><span class="ens-name">0xaddd3e23599d2b7267067afbcd18830aefca640a</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>56</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xb4b4570df6f7fe320f10fdfb702dba7e35244550?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xb4b4570df6f7fe320f10fdfb702dba7e35244550</span></a></td>
+                        <td><span class="ens-name">nodeify.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>57</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xb54c7c9fa1a51300e6054b70ae9952c1fb2800b4?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xb54c7c9fa1a51300e6054b70ae9952c1fb2800b4</span></a></td>
+                        <td><span class="ens-name">kukisglobal.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>58</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xb8ca929e2bd96548cabcabc56cfc9a5147cef0ff?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xb8ca929e2bd96548cabcabc56cfc9a5147cef0ff</span></a></td>
+                        <td><span class="ens-name">waynewayner.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>59</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xc55c63563efb36f7cc65ac3060c52987c6694b37?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xc55c63563efb36f7cc65ac3060c52987c6694b37</span></a></td>
+                        <td><span class="ens-name">figment-prime.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>60</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xc9014686f6336ad558b539565d5dff840b339082?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xc9014686f6336ad558b539565d5dff840b339082</span></a></td>
+                        <td><span class="ens-name">rampdefigrt.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>61</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xcba919cf1ee9c537545975d9968718a09d20f071?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xcba919cf1ee9c537545975d9968718a09d20f071</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>62</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xd9819426c82e2b8fc58b9b62a78efe93f78077c6?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xd9819426c82e2b8fc58b9b62a78efe93f78077c6</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>63</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xda20dde459c8d918f81566995d899a046d4d8503?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xda20dde459c8d918f81566995d899a046d4d8503</span></a></td>
+                        <td><span class="ens-name">dsrvlabs-indexer-01.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>64</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xdc7daef4d0751a9f6ec28b06d6d9475b13eb0918?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xdc7daef4d0751a9f6ec28b06d6d9475b13eb0918</span></a></td>
+                        <td><span class="ens-name">bitnordic.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>65</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xdeb712db301285ed483ef9e02dd08a1980f273f1?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xdeb712db301285ed483ef9e02dd08a1980f273f1</span></a></td>
+                        <td><span class="ens-name">easy2stake-com.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>66</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xdec965f0604125be05cd8a136c85d02ef344d61a?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xdec965f0604125be05cd8a136c85d02ef344d61a</span></a></td>
+                        <td><span class="ens-name">stakesquid-3.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>67</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xdecba5154aab37ae5e381a19f804f3af4d1bcbb5?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xdecba5154aab37ae5e381a19f804f3af4d1bcbb5</span></a></td>
+                        <td><span class="ens-name">0y.decisionbasis.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>68</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xe0ceec6daa59cc951f3f71d6fc4221e55ef6c386?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xe0ceec6daa59cc951f3f71d6fc4221e55ef6c386</span></a></td>
+                        <td><span class="ens-name">arb.stake-machine.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>69</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xe13840a2e92e0cb17a246609b432d0fa2e418774?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xe13840a2e92e0cb17a246609b432d0fa2e418774</span></a></td>
+                        <td><span class="ens-name">lunanova-indexer.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>70</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xe48b586eeb81bde60f14b0b8d80ddd06c7a24720?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xe48b586eeb81bde60f14b0b8d80ddd06c7a24720</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>71</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xe63e935fba572784d5aa40715e372e7948bbdb12?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xe63e935fba572784d5aa40715e372e7948bbdb12</span></a></td>
+                        <td><span class="ens-name">chorusone-thegraph.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>72</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xe6de2325ef1aac1f058fae59d3c38a472f569846?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xe6de2325ef1aac1f058fae59d3c38a472f569846</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>73</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xe91273727203bcc827521fc8b0c762d435c3c5d0?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xe91273727203bcc827521fc8b0c762d435c3c5d0</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>74</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xe9e284277648fcdb09b8efc1832c73c09b5ecf59?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xe9e284277648fcdb09b8efc1832c73c09b5ecf59</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>75</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xeccdf8231326a9c5aad32df76a633aaa4c49b104?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xeccdf8231326a9c5aad32df76a633aaa4c49b104</span></a></td>
+                        <td><span class="ens-name">catapulta.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>76</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xedca8740873152ff30a2696add66d1ab41882beb?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xedca8740873152ff30a2696add66d1ab41882beb</span></a></td>
+                        <td><span class="ens-name">pinax.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>77</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xeeeee689aa442c607105f29f06d00d2f748776b2?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xeeeee689aa442c607105f29f06d00d2f748776b2</span></a></td>
+                        <td><span class="ens-name">grt.stakecn.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>78</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xf00f7157fa8fd0420b87956d46058a16b2f23adc?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xf00f7157fa8fd0420b87956d46058a16b2f23adc</span></a></td>
+                        <td><span class="ens-name">p2p-org-booster.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>79</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xf0e33495afe697dbe32168bd0743ba32ebb978a3?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xf0e33495afe697dbe32168bd0743ba32ebb978a3</span></a></td>
+                        <td><span class="ens-name">blockonaut.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>80</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xf57dcd881ebd1d81df99194abdfa90f9e0e92f11?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xf57dcd881ebd1d81df99194abdfa90f9e0e92f11</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>81</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xf671c6b83f44ead14ca1c5f4a629f1b9b18c8f29?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xf671c6b83f44ead14ca1c5f4a629f1b9b18c8f29</span></a></td>
+                        <td><span class="ens-name">capitanbeto.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>82</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xf7793bf9561c32ffbac603ce572fa55643f9cf72?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xf7793bf9561c32ffbac603ce572fa55643f9cf72</span></a></td>
+                        <td><span class="empty-ens">No ENS</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>83</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xf9123292b4d958c53aaad8c5df0138ee0e62944b?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xf9123292b4d958c53aaad8c5df0138ee0e62944b</span></a></td>
+                        <td><span class="ens-name">figment-prime-2.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>84</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xf92f430dd8567b0d466358c79594ab58d919a6d4?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xf92f430dd8567b0d466358c79594ab58d919a6d4</span></a></td>
+                        <td><span class="ens-name">ellipfra-indexer.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>85</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xfb168335f5a3868a03696904ed38fa95fd167c0e?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xfb168335f5a3868a03696904ed38fa95fd167c0e</span></a></td>
+                        <td><span class="ens-name">validatrium.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>86</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xfc842f81490dcb37e82d416b2d28327dfb24ba9a?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xfc842f81490dcb37e82d416b2d28327dfb24ba9a</span></a></td>
+                        <td><span class="ens-name">grassets-tech-1.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>87</td>
+                        <td><a href="https://thegraph.com/explorer/profile/0xfeff9093f6b32d0e5cddba743b06a1fedb87c004?view=Indexing&chain=arbitrum-one" target="_blank" class="address-link"><span class="address">0xfeff9093f6b32d0e5cddba743b06a1fedb87c004</span></a></td>
+                        <td><span class="ens-name">p-ops2.eth</span></td>
+                        <td></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="stats">
+            <div class="total-count">Total Indexers: <span id="totalCount">87</span></div>
+            <div class="filtered-count">Showing: <span id="filteredCount">87</span></div>
+        </div>
+    </div>
+
+    <script>
+        // Table data
+        const originalData = [
+            [1, "0x0058223c6617cca7ce76fc929ec9724cd43d4542", "grassets-tech-2.eth", "", ""],
+            [2, "0x01f17c392614c7ea586e7272ed348efee21b90a3", "oraclegen-indexer.eth", "", ""],
+            [3, "0x089f78d8cf0a5ae1b7a581b1910a73f8cb3e4774", "darksiders-team.eth", "", ""],
+            [4, "0x0b9d582b7fdd387ba13ad7f453d49af255a8ed5e", "dapplooker-indexer.eth", "", ""],
+            [5, "0x0fd8fd1dc8162148cb9413062fe6c6b144335dbf", "a1.protofire.eth", "", ""],
+            [6, "0x17def1a43a323c711c7a32101ecf41e58eff54a2", "rampdefi4.eth", "", ""],
+            [7, "0x1b7e0068ca1d7929c8c56408d766e1510e54d98d", "suntzu-indexer-arb.eth", "", ""],
+            [8, "0x1b92e4cba0f82c85c1298af861247849988c788c", "vincenttaglia-indexer.eth", "", ""],
+            [9, "0x269ebeee083ce6f70486a67dc8036a889bf322a9", "thomasblock.eth", "", ""],
+            [10, "0x2b3c7d1ef5fdfc0557934019c531d3e70d6200ae", "", "", ""],
+            [11, "0x2e15f3f0d37b191c33ee06e953c8cce4c493b47a", "ai.swiftstaking.eth", "", ""],
+            [12, "0x2e8d26e9b0d280738728e71c37bf05e70a636238", "moonli.eth", "", ""],
+            [13, "0x2f09092aacd80196fc984908c5a9a7ab3ee4f1ce", "p2p-org-arbitrum.eth", "", ""],
+            [14, "0x326c584e0f0eab1f1f83c93cc6ae1acc0feba0bc", "graphtronauts-arbitrum.eth", "", ""],
+            [15, "0x32bbd16a94ebb289edceebe77f35acc82664157b", "rampdefi3.eth", "", ""],
+            [16, "0x345c9a221e4caa15f78fb8078c441745de48a225", "0xfury.eth", "", ""],
+            [17, "0x35917c0eb91d2e21bef40940d028940484230c06", "streamingfastindexer.eth", "", ""],
+            [18, "0x3717cef8020bddee7a18f4efb2bfa88fefdcb1bc", "pinax2.eth", "", ""],
+            [19, "0x3863a65ce278a240f9aa2a4b4a48493be59e6139", "indexer.nftx.eth", "", ""],
+            [20, "0x38f412c8d6346a17a53ff9ceecd2e01acecd27c0", "graphops.eth", "", ""],
+            [21, "0x3b9ba748691f135b71582dc3292e5e3ed7e13341", "", "", ""],
+            [22, "0x3e1536fc83cd5bed83a521a26034ff3e59c6a7c4", "differential-graph.eth", "", ""],
+            [23, "0x3f74870f80ff7449fe4c6ff257da5fa72734c970", "stake🦑squid-2.eth", "", ""],
+            [24, "0x4207df52f7ff229364899b21e9c4ad36d3d42981", "lux8-net.eth", "", ""],
+            [25, "0x474e571ab6dd77489ec3c7ddf9cbc893fcba684c", "allnodescom.eth", "", ""],
+            [26, "0x4d67938e9b07681526fe0345a45b770bba88c659", "4block-team.eth", "", ""],
+            [27, "0x4e5c87772c29381bcabc58c3f182b6633b5a274a", "indexer.datanexus.eth", "", ""],
+            [28, "0x51637a35f7f054c98ed51904de939b9561d37885", "kolbin.eth", "", ""],
+            [29, "0x53dbbc9d916b1840a2c4c26b150ba2e13f36e10f", "thoalt-indexer.eth", "", ""],
+            [30, "0x550c1f4814a85aa10f5f061ca8c45e2ee9620226", "experimental.infradao.eth", "", ""],
+            [31, "0x59749d1fa9635cd0413aeff5ee295490a7e87f54", "", "", ""],
+            [32, "0x5af569b692b0598721461027dbbecde74d465d99", "", "", ""],
+            [33, "0x5b3c8f7245dfbd9bea22d9c4b975df60a638e5a3", "thegraph.mind-heart-soul.eth", "", ""],
+            [34, "0x5ddee9720e17aad28febb55643cd8ab50c51c60b", "maplenodes.eth", "", ""],
+            [35, "0x600f2b53719e1dbacf340572b31a9df9921b82fa", "", "", ""],
+            [36, "0x63c9dc729ba7a22bb8605216b24a34b902e5fe94", "infradao.eth", "", ""],
+            [37, "0x6f3ce93a09f30f18d728d2364268b5fe9444b89e", "", "", ""],
+            [38, "0x6f8a032b4b1ee622ef2f0fc091bdbb98cfae81a3", "indexer.semiotic.eth", "", ""],
+            [39, "0x6f9bb7e454f5b3eb2310343f0e99269dc2bb8a1d", "cp0x.eth", "", ""],
+            [40, "0x735f422922bd4d459ea491f46e1bb9295b89f961", "", "", ""],
+            [41, "0x74dbb201ecc0b16934e68377bc13013883d9417b", "rickydata-indexer.eth", "", ""],
+            [42, "0x7bb834017672b1135466661d8dd69c5dd0b3bf51", "dataservices.eth", "", ""],
+            [43, "0x8f689a83dd52eaa1d5ad6a40c46189b4a0d70b06", "art3mis-cloud.eth", "", ""],
+            [44, "0x9082f497bdc512d08ffde50d6fce28e72c2addcf", "holographic-indexer.eth", "", ""],
+            [45, "0x920fdeb00ee04dd72f62d8a8f80f13c82ef76c1e", "braindexer.eth", "", ""],
+            [46, "0x958ad15ea21fb79b935524cf90c90276031bee20", "hashkeycloud.eth", "", ""],
+            [47, "0x9da1017766bfeb2835db4f811516eea68996538b", "ryabina.eth", "", ""],
+            [48, "0xa01b06b0e9feb016d5ab669ce89d059bc666e569", "", "", ""],
+            [49, "0xa181d0f242b3730f8a244cc94eda05faf17a43e8", "", "", ""],
+            [50, "0xa28a99b0219a34142a9398a19460fcd69250a2b2", "", "", ""],
+            [51, "0xa4d629ba2ffb3321008d8cec37cca077696bf24d", "", "", ""],
+            [52, "0xa6ff993e0f6253f1b7f55c873577a2f0f0ceb325", "", "", ""],
+            [53, "0xa9b5da22440dedd72535ec0525582ca0b63be5e1", "pdp-indexer.eth", "", ""],
+            [54, "0xaa988dcb035518bc0e20082a3148a5d3dfd1776d", "stake🦑squid-1.eth", "", ""],
+            [55, "0xaddd3e23599d2b7267067afbcd18830aefca640a", "0xaddd3e23599d2b7267067afbcd18830aefca640a", "", ""],
+            [56, "0xb4b4570df6f7fe320f10fdfb702dba7e35244550", "nodeify.eth", "", ""],
+            [57, "0xb54c7c9fa1a51300e6054b70ae9952c1fb2800b4", "kukisglobal.eth", "", ""],
+            [58, "0xb8ca929e2bd96548cabcabc56cfc9a5147cef0ff", "waynewayner.eth", "", ""],
+            [59, "0xc55c63563efb36f7cc65ac3060c52987c6694b37", "figment-prime.eth", "", ""],
+            [60, "0xc9014686f6336ad558b539565d5dff840b339082", "rampdefigrt.eth", "", ""],
+            [61, "0xcba919cf1ee9c537545975d9968718a09d20f071", "", "", ""],
+            [62, "0xd9819426c82e2b8fc58b9b62a78efe93f78077c6", "", "", ""],
+            [63, "0xda20dde459c8d918f81566995d899a046d4d8503", "dsrvlabs-indexer-01.eth", "", ""],
+            [64, "0xdc7daef4d0751a9f6ec28b06d6d9475b13eb0918", "bitnordic.eth", "", ""],
+            [65, "0xdeb712db301285ed483ef9e02dd08a1980f273f1", "easy2stake-com.eth", "", ""],
+            [66, "0xdec965f0604125be05cd8a136c85d02ef344d61a", "stakesquid-3.eth", "", ""],
+            [67, "0xdecba5154aab37ae5e381a19f804f3af4d1bcbb5", "0y.decisionbasis.eth", "", ""],
+            [68, "0xe0ceec6daa59cc951f3f71d6fc4221e55ef6c386", "arb.stake-machine.eth", "", ""],
+            [69, "0xe13840a2e92e0cb17a246609b432d0fa2e418774", "lunanova-indexer.eth", "", ""],
+            [70, "0xe48b586eeb81bde60f14b0b8d80ddd06c7a24720", "", "", ""],
+            [71, "0xe63e935fba572784d5aa40715e372e7948bbdb12", "chorusone-thegraph.eth", "", ""],
+            [72, "0xe6de2325ef1aac1f058fae59d3c38a472f569846", "", "", ""],
+            [73, "0xe91273727203bcc827521fc8b0c762d435c3c5d0", "", "", ""],
+            [74, "0xe9e284277648fcdb09b8efc1832c73c09b5ecf59", "", "", ""],
+            [75, "0xeccdf8231326a9c5aad32df76a633aaa4c49b104", "catapulta.eth", "", ""],
+            [76, "0xedca8740873152ff30a2696add66d1ab41882beb", "pinax.eth", "", ""],
+            [77, "0xeeeee689aa442c607105f29f06d00d2f748776b2", "grt.stakecn.eth", "", ""],
+            [78, "0xf00f7157fa8fd0420b87956d46058a16b2f23adc", "p2p-org-booster.eth", "", ""],
+            [79, "0xf0e33495afe697dbe32168bd0743ba32ebb978a3", "blockonaut.eth", "", ""],
+            [80, "0xf57dcd881ebd1d81df99194abdfa90f9e0e92f11", "", "", ""],
+            [81, "0xf671c6b83f44ead14ca1c5f4a629f1b9b18c8f29", "capitanbeto.eth", "", ""],
+            [82, "0xf7793bf9561c32ffbac603ce572fa55643f9cf72", "", "", ""],
+            [83, "0xf9123292b4d958c53aaad8c5df0138ee0e62944b", "figment-prime-2.eth", "", ""],
+            [84, "0xf92f430dd8567b0d466358c79594ab58d919a6d4", "ellipfra-indexer.eth", "", ""],
+            [85, "0xfb168335f5a3868a03696904ed38fa95fd167c0e", "validatrium.eth", "", ""],
+            [86, "0xfc842f81490dcb37e82d416b2d28327dfb24ba9a", "grassets-tech-1.eth", "", ""],
+            [87, "0xfeff9093f6b32d0e5cddba743b06a1fedb87c004", "p-ops2.eth", "", ""],
+        ];
+        
+        let currentData = [...originalData];
+        let sortColumn = -1;
+        let sortDirection = 'asc';
+        
+        // Search functionality
+        const searchInput = document.getElementById('searchInput');
+        const tableBody = document.getElementById('tableBody');
+        const totalCount = document.getElementById('totalCount');
+        const filteredCount = document.getElementById('filteredCount');
+        
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            currentData = originalData.filter(row => 
+                row[1].toLowerCase().includes(searchTerm) || 
+                row[2].toLowerCase().includes(searchTerm)
+            );
+            renderTable();
+            updateStats();
+        });
+        
+        // Sorting functionality
+        function sortTable(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+            
+            currentData.sort((a, b) => {
+                let aVal = a[column];
+                let bVal = b[column];
+                
+                // Handle numeric sorting for first column
+                if (column === 0) {
+                    aVal = parseInt(aVal);
+                    bVal = parseInt(bVal);
+                } else {
+                    aVal = aVal.toLowerCase();
+                    bVal = bVal.toLowerCase();
+                }
+                
+                if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+            
+            renderTable();
+            updateSortHeaders();
+        }
+        
+        function renderTable() {
+            tableBody.innerHTML = '';
+            currentData.forEach((row, index) => {
+                const [num, address, ensName, status, eligibleUntil] = row;
+                const ensDisplay = ensName || 'No ENS';
+                const ensClass = ensName ? 'ens-name' : 'empty-ens';
+                const explorerUrl = `https://thegraph.com/explorer/profile/${address}?view=Indexing&chain=arbitrum-one`;
+                
+                const rowHTML = `
+                    <tr>
+                        <td>${num}</td>
+                        <td><a href="${explorerUrl}" target="_blank" class="address-link"><span class="address">${address}</span></a></td>
+                        <td><span class="${ensClass}">${ensDisplay}</span></td>
+                        <td>${status}</td>
+                        <td>${eligibleUntil}</td>
+                    </tr>
+                `;
+                tableBody.innerHTML += rowHTML;
+            });
+        }
+        
+        function updateSortHeaders() {
+            const headers = document.querySelectorAll('th.sortable');
+            headers.forEach((header, index) => {
+                header.className = 'sortable';
+                if (index === sortColumn) {
+                    header.classList.add(sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+                }
+            });
+        }
+        
+        function updateStats() {
+            totalCount.textContent = originalData.length;
+            filteredCount.textContent = currentData.length;
+        }
+        
+        // Add click handlers to sortable headers
+        document.querySelectorAll('th.sortable').forEach((header, index) => {
+            header.addEventListener('click', () => sortTable(index));
+        });
+        
+        // Initialize
+        renderTable();
+        updateStats();
+    </script>
+    
+    <div class="footer">
+        <div class="footer-content">
+            <span class="version">v0.0.1</span>
+            <span class="footer-separator">•</span>
+            <span>Last Update: 17 Oct 2025 at 18:08 (UTC)</span>
+        </div>
+        <div class="footer-credits">
+            Created with ❤️ by <a href="https://x.com/pdiomede" target="_blank">pdiomede</a>
+        </div>
+    </div>
+</body>
+</html>

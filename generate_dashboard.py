@@ -473,8 +473,8 @@ def checkEligibility(contract_address: str, quicknode_url: str, input_file: str 
         print(f"Pass 1: Checking isEligible status for {len(indexers)} indexers...")
         
         # Function selector for isEligible(address)
-        # keccak256("isEligible(address)") = 0x6ba3f3e9...
-        is_eligible_selector = '0x6ba3f3e9'
+        # From contract: 0x66e305fd
+        is_eligible_selector = '0x66e305fd'
         
         eligible_count = 0
         

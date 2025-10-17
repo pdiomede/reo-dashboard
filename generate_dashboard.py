@@ -41,6 +41,33 @@ def get_last_transaction_from_json(json_file: str = 'last_transaction.json') -> 
         return None
 
 
+def save_transaction_to_json(transaction_data: dict, json_file: str = 'last_transaction.json') -> None:
+    """
+    Save transaction data to a local JSON file with a timestamp of when the script ran.
+    
+    Args:
+        transaction_data: Dictionary with transaction data
+        json_file: Path to the JSON file to save to
+    """
+    try:
+        # Add the script run timestamp
+        current_timestamp = int(datetime.now(timezone.utc).timestamp())
+        current_readable = datetime.now(timezone.utc).strftime("%b-%d-%Y %H:%M:%S")
+        
+        # Create the data structure with the script run timestamp
+        data_to_save = transaction_data.copy()
+        data_to_save['last_script_run'] = current_timestamp
+        data_to_save['last_script_run_readable'] = current_readable
+        
+        # Save to file
+        with open(json_file, 'w', encoding='utf-8') as f:
+            json.dump(data_to_save, f, indent=2)
+        
+        print(f"✓ Transaction data saved to {json_file} with timestamp")
+    except Exception as e:
+        print(f"Error saving to {json_file}: {e}")
+
+
 def get_last_transaction(contract_address: str, api_key: str) -> Optional[dict]:
     """
     Get the last transaction for a contract from Arbiscan API.
@@ -308,6 +335,10 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     # Final fallback to Arbiscan API
     if not last_transaction:
         last_transaction = get_last_transaction(contract_address, api_key)
+    
+    # Save transaction data with script run timestamp
+    if last_transaction:
+        save_transaction_to_json(last_transaction)
     
     # Fetch oracle update time from contract
     print("Fetching oracle update time from contract...")

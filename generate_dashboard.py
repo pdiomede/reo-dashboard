@@ -273,10 +273,13 @@ def get_eligibility_period(contract_address: str, quicknode_url: str) -> Optiona
         return None
 
 
-def checkEligibility(graph_api_key: str, output_file: str = 'active_indexers.json') -> bool:
+def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexers.json') -> bool:
     """
-    Query The Graph's network subgraph to retrieve indexers with self stake > 0,
-    resolve their ENS names, and write the results to a JSON file.
+    Retrieve the list of active indexers with self stake > 0 from The Graph's network subgraph
+    and resolve their ENS names. Writes the results to a JSON file.
+    
+    This function only retrieves the list of active indexers and their ENS names.
+    It does not check eligibility status.
     
     Args:
         graph_api_key: The Graph API key for querying the network subgraph
@@ -412,7 +415,8 @@ def checkEligibility(graph_api_key: str, output_file: str = 'active_indexers.jso
                 "address": address,
                 "ens_name": ens_mapping.get(address_lower, ""),
                 "status": "",
-                "eligible_until": ""
+                "eligible_until": "",
+                "eligibility_renewal_time": ""
             }
             output_data["indexers"].append(indexer_data)
         
@@ -426,6 +430,107 @@ def checkEligibility(graph_api_key: str, output_file: str = 'active_indexers.jso
     except requests.exceptions.RequestException as e:
         print(f"Request error querying subgraphs: {e}")
         return False
+    except Exception as e:
+        print(f"Error in retrieveActiveIndexers: {e}")
+        return False
+
+
+def checkEligibility(contract_address: str, quicknode_url: str, input_file: str = 'active_indexers.json') -> bool:
+    """
+    Check eligibility for each indexer by calling the contract's getEligibilityRenewalTime function.
+    Reads indexer addresses from the JSON file and updates each indexer's eligibility_renewal_time field.
+    
+    Args:
+        contract_address: The contract address
+        quicknode_url: QuickNode RPC endpoint URL
+        input_file: Path to the active_indexers.json file
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Check if input file exists
+        if not os.path.exists(input_file):
+            print(f"⚠ {input_file} not found, skipping eligibility check")
+            return False
+        
+        # Read the JSON file
+        print(f"Reading indexer data from {input_file}...")
+        with open(input_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        indexers = data.get("indexers", [])
+        if not indexers:
+            print("No indexers found in JSON file")
+            return False
+        
+        print(f"Checking eligibility for {len(indexers)} indexers...")
+        
+        # Function selector for getEligibilityRenewalTime(address)
+        # keccak256("getEligibilityRenewalTime(address)") = 0x5d4e8c95...
+        function_selector = '0x5d4e8c95'
+        
+        updated_count = 0
+        
+        # Check eligibility for each indexer
+        for i, indexer in enumerate(indexers):
+            address = indexer.get("address", "")
+            if not address:
+                continue
+            
+            try:
+                # Prepare the function call data
+                # Remove '0x' prefix from address and pad to 32 bytes (64 hex chars)
+                address_param = address[2:] if address.startswith('0x') else address
+                address_param = address_param.lower().zfill(64)
+                
+                data_payload = function_selector + address_param
+                
+                # Make the eth_call
+                payload = {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "eth_call",
+                    "params": [
+                        {
+                            "to": contract_address,
+                            "data": data_payload
+                        },
+                        "latest"
+                    ]
+                }
+                
+                response = requests.post(quicknode_url, json=payload, timeout=10)
+                response.raise_for_status()
+                
+                result = response.json()
+                
+                if "result" in result and result["result"] != "0x":
+                    # Parse the result (uint256 timestamp)
+                    renewal_time = int(result["result"], 16)
+                    indexer["eligibility_renewal_time"] = renewal_time
+                    updated_count += 1
+                else:
+                    indexer["eligibility_renewal_time"] = 0
+                
+            except Exception as e:
+                print(f"⚠ Error checking eligibility for {address}: {e}")
+                indexer["eligibility_renewal_time"] = 0
+                continue
+            
+            # Progress indicator every 10 indexers
+            if (i + 1) % 10 == 0:
+                print(f"  Processed {i + 1}/{len(indexers)} indexers...")
+        
+        # Write updated data back to JSON file
+        with open(input_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+        
+        print(f"✓ Checked eligibility for {len(indexers)} indexers")
+        print(f"✓ Updated {updated_count} eligibility renewal times")
+        print(f"✓ Results written to {input_file}")
+        return True
+        
     except Exception as e:
         print(f"Error in checkEligibility: {e}")
         return False
@@ -1214,14 +1319,14 @@ def main():
         print("    2. Edit .env with your API keys")
         print()
     
-    # Check eligibility by querying network subgraph
+    # Retrieve active indexers by querying network subgraph
     graph_api_key = os.getenv("GRAPH_API_KEY")
     if graph_api_key and graph_api_key != "your_graph_api_key_here":
         print()
-        checkEligibility(graph_api_key)
+        retrieveActiveIndexers(graph_api_key)
         print()
     else:
-        print("⚠ GRAPH_API_KEY not set, skipping eligibility check")
+        print("⚠ GRAPH_API_KEY not set, skipping active indexers retrieval")
         print()
     
     # Read indexer data
@@ -1258,6 +1363,11 @@ def main():
     
     print("✓ Configuration loaded successfully")
     print()
+    
+    # Check eligibility for each indexer by calling the contract
+    checkEligibility(contract_address, quicknode_url)
+    print()
+    
     html_content = generate_html_dashboard(indexers, contract_address=contract_address, api_key=api_key, quicknode_url=quicknode_url)
     
     # Write to index.html

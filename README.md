@@ -42,17 +42,22 @@ This system ensures that rewards are distributed only to indexers who actively s
 │  ENS Subgraph     │ ──┤
 │  (Name Resolution)│   ├──► retrieveActiveIndexers() 
 └───────────────────┘   │         │
-                        │         ▼
-┌───────────────────┐   │    active_indexers.json
-│ Contract: Oracle  │ ──┤         │
-│  (Eligibility)    │   │         ▼
-└───────────────────┘   │    checkEligibility()
-                        │         │
-┌───────────────────┐   │         ▼
-│last_transaction   │ ──┤    renderIndexerTable()
+     (or cached)        │         ▼
+                        │    active_indexers.json
+┌───────────────────┐   │         +
+│ ens_resolution    │ ──┤    ens_resolution.json (cached ENS)
 │     .json         │   │         │
 └───────────────────┘   │         ▼
-                        └──► HTML Dashboard (only eligible indexers)
+                        │    checkEligibility()
+┌───────────────────┐   │         │
+│ Contract: Oracle  │ ──┤         ▼
+│  (Eligibility)    │   │    renderIndexerTable() (merges ENS data)
+└───────────────────┘   │         │
+                        │         ▼
+┌───────────────────┐   │    HTML Dashboard (only eligible indexers)
+│last_transaction   │ ──┘
+│     .json         │
+└───────────────────┘
 ```
 
 ### Main Components
@@ -60,8 +65,11 @@ This system ensures that rewards are distributed only to indexers who actively s
 #### 1. **Active Indexers Retrieval**
 - **`retrieveActiveIndexers()`**: Queries The Graph's network subgraph to get indexers with self stake > 0
   - Queries network subgraph (deployment ID: `DZz4kDTdmzWLWsV373w2bSmoar3umKKH9y82SUKr5qmp`)
-  - Resolves ENS names via ENS subgraph (deployment ID: `5XqPmWe6gjyrJtFn9cLy237i4cWw2j9HcUJEXsP5qGtH`)
-  - Writes results to `active_indexers.json` with fields: `address`, `ens_name`, `is_eligible`, `status`, `eligible_until`, `eligibility_renewal_time`
+  - ENS resolution strategy (controlled by `USE_CACHED_ENS` environment variable):
+    - **If `USE_CACHED_ENS=Y`**: Loads ENS names from `ens_resolution.json` cache file
+    - **If `USE_CACHED_ENS=N`**: Queries ENS subgraph (deployment ID: `5XqPmWe6gjyrJtFn9cLy237i4cWw2j9HcUJEXsP5qGtH`) and updates cache
+  - Writes results to `active_indexers.json` with fields: `address`, `is_eligible`, `status`, `eligible_until`, `eligibility_renewal_time` (ENS stored separately)
+  - ENS data saved to `ens_resolution.json` for caching
 
 #### 2. **Eligibility Check (Two-Pass Approach)**
 - **`checkEligibility()`**: Checks eligibility status for all active indexers
@@ -71,7 +79,9 @@ This system ensures that rewards are distributed only to indexers who actively s
 
 #### 3. **Dashboard Rendering**
 - **`renderIndexerTable()`**: Reads `active_indexers.json` and filters only eligible indexers (`is_eligible = true`)
-  - Returns list of eligible indexers to display on the dashboard
+  - Loads ENS names from `ens_resolution.json` cache
+  - Merges ENS data with indexer eligibility data
+  - Returns list of eligible indexers with ENS names to display on the dashboard
   - Indexers with `is_eligible = false` are excluded from the dashboard view
 
 #### 4. **Transaction Data Retrieval**
@@ -116,11 +126,12 @@ The script tries multiple methods to fetch the last transaction data (in priorit
 ├── generate_dashboard.py    # Main script
 ├── indexers.txt             # Legacy file (still read for backwards compatibility)
 ├── active_indexers.json     # Active indexers with eligibility data (generated)
+├── ens_resolution.json      # ENS name cache (generated)
 ├── last_transaction.json    # Cached transaction data (generated)
 ├── grt.png                  # Logo image for the dashboard
 ├── index.html               # Generated dashboard (output)
-├── .env                     # Environment variables (create from .env.example)
-├── .env.example             # Template for environment variables
+├── .env                     # Environment variables (create from env.example)
+├── env.example              # Template for environment variables
 ├── requirements.txt         # Python dependencies
 └── README.md                # This file
 ```
@@ -145,7 +156,7 @@ The script reads configuration from a `.env` file in the project root.
 **Setup:**
 1. Copy the example file:
    ```bash
-   cp .env.example .env
+   cp env.example .env
    ```
 
 2. Edit `.env` and add your actual values:
@@ -153,9 +164,11 @@ The script reads configuration from a `.env` file in the project root.
    CONTRACT_ADDRESS=0x9BED32d2b562043a426376b99d289fE821f5b04E
    ARBISCAN_API_KEY=your_arbiscan_api_key
    QUICK_NODE=your_quicknode_rpc_url
+   GRAPH_API_KEY=your_graph_api_key
+   USE_CACHED_ENS=N
    ```
 
-The script will automatically load these variables. All three variables are required for the script to run.
+The script will automatically load these variables. The first four variables are required for the script to run.
 
 ### Running the Script
 
@@ -165,11 +178,13 @@ python3 generate_dashboard.py
 
 This will:
 1. **Retrieve active indexers** from The Graph's network subgraph (with self stake > 0)
-2. **Resolve ENS names** via ENS subgraph
+2. **Resolve ENS names**:
+   - If `USE_CACHED_ENS=Y`: Load ENS names from `ens_resolution.json` cache
+   - If `USE_CACHED_ENS=N`: Query ENS subgraph and update `ens_resolution.json` cache
 3. **Check eligibility** for each indexer by calling the contract's `isEligible()` function
 4. **Get renewal times** for eligible indexers via `getEligibilityRenewalTime()`
-5. Save all data to `active_indexers.json`
-6. **Render dashboard** showing only eligible indexers (`is_eligible = true`)
+5. Save indexer data to `active_indexers.json` (without ENS names)
+6. **Render dashboard** showing only eligible indexers (`is_eligible = true`) merged with ENS names from cache
 7. Fetch the latest transaction data
 8. Fetch the oracle update time from the contract
 9. Generate `index.html`
@@ -201,23 +216,35 @@ All configuration is managed through environment variables in the `.env` file:
 - **Purpose**: Connects to Arbitrum Sepolia for real-time blockchain data
 - **Get yours**: [QuickNode](https://quicknode.com)
 
+### The Graph API Key
+- **Variable**: `GRAPH_API_KEY`
+- **Purpose**: Queries The Graph's network and ENS subgraphs
+- **Get yours**: [The Graph Studio](https://thegraph.com/studio/)
+
+### ENS Cache Configuration
+- **Variable**: `USE_CACHED_ENS`
+- **Values**: `Y` or `N`
+- **Purpose**: Controls whether to use cached ENS data or fetch from subgraph
+  - **`Y`**: Use cached ENS names from `ens_resolution.json` (faster, saves API calls)
+  - **`N`**: Query ENS subgraph and update cache (required for first run or to refresh ENS data)
+- **Default**: `N`
+- **Note**: On first run or when cache doesn't exist, ENS data will be fetched regardless of this setting
+
 ## Data Sources
 
 ### Generated: `active_indexers.json`
-This file is automatically generated by the script and contains all active indexers with their eligibility data.
+This file is automatically generated by the script and contains all active indexers with their eligibility data (without ENS names).
 
 Structure:
 ```json
 {
   "metadata": {
     "retrieved": "2025-10-17 20:00:00 UTC",
-    "total_count": 100,
-    "ens_resolved": 74
+    "total_count": 100
   },
   "indexers": [
     {
       "address": "0x0058223c6617cca7ce76fc929ec9724cd43d4542",
-      "ens_name": "grassets-tech-2.eth",
       "is_eligible": true,
       "status": "",
       "eligible_until": "",
@@ -231,6 +258,31 @@ Structure:
 - `is_eligible`: Boolean indicating if the indexer is eligible for rewards (from contract's `isEligible()`)
 - `eligibility_renewal_time`: Unix timestamp of eligibility renewal (from contract's `getEligibilityRenewalTime()`)
 - **Only indexers with `is_eligible = true` are displayed on the dashboard**
+
+### Generated: `ens_resolution.json`
+This file is automatically generated by the script and contains cached ENS name resolutions.
+
+Structure:
+```json
+{
+  "metadata": {
+    "retrieved": "2025-10-17 20:00:00 UTC",
+    "total_count": 100,
+    "ens_resolved": 74
+  },
+  "ens_resolutions": {
+    "0x0058223c6617cca7ce76fc929ec9724cd43d4542": "grassets-tech-2.eth",
+    "0x01f17c392614c7ea586e7272ed348efee21b90a3": "oraclegen-indexer.eth",
+    "0x0874e792462406dc12ee96b75e52a3bdbba3a123": "posthuman-validator.eth"
+  }
+}
+```
+
+**Key Fields:**
+- `ens_resolutions`: Dictionary mapping lowercase addresses to ENS names
+- `total_count`: Total number of addresses in the cache
+- `ens_resolved`: Number of addresses with resolved ENS names
+- **This cache is used during dashboard rendering to merge ENS names with indexer data**
 
 ### Legacy: `indexers.txt` (Optional)
 This file is still read for backwards compatibility but is not used for the main dashboard table.

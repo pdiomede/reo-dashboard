@@ -273,17 +273,78 @@ def get_eligibility_period(contract_address: str, quicknode_url: str) -> Optiona
         return None
 
 
-def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexers.json') -> bool:
+def save_ens_cache(ens_mapping: dict, cache_file: str = 'ens_resolution.json') -> None:
     """
-    Retrieve the list of active indexers with self stake > 0 from The Graph's network subgraph
-    and resolve their ENS names. Writes the results to a JSON file.
+    Save ENS resolution data to a cache file.
     
-    This function only retrieves the list of active indexers and their ENS names.
-    It does not check eligibility status.
+    Args:
+        ens_mapping: Dictionary mapping addresses (lowercase) to ENS names
+        cache_file: Path to the cache file
+    """
+    try:
+        current_timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+        
+        cache_data = {
+            "metadata": {
+                "retrieved": current_timestamp,
+                "total_count": len(ens_mapping),
+                "ens_resolved": len([name for name in ens_mapping.values() if name])
+            },
+            "ens_resolutions": ens_mapping
+        }
+        
+        with open(cache_file, 'w', encoding='utf-8') as f:
+            json.dump(cache_data, f, indent=2)
+        
+        print(f"✓ ENS cache saved to {cache_file}")
+    except Exception as e:
+        print(f"Error saving ENS cache to {cache_file}: {e}")
+
+
+def load_ens_cache(cache_file: str = 'ens_resolution.json') -> Optional[dict]:
+    """
+    Load ENS resolution data from cache file.
+    
+    Args:
+        cache_file: Path to the cache file
+        
+    Returns:
+        Dictionary mapping addresses (lowercase) to ENS names, or None if cache doesn't exist
+    """
+    try:
+        if not os.path.exists(cache_file):
+            print(f"ENS cache file {cache_file} not found")
+            return None
+        
+        with open(cache_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        ens_mapping = data.get("ens_resolutions", {})
+        metadata = data.get("metadata", {})
+        retrieved = metadata.get("retrieved", "unknown")
+        
+        print(f"✓ Loaded ENS cache from {cache_file} (retrieved: {retrieved})")
+        print(f"  - Total entries: {metadata.get('total_count', 0)}")
+        print(f"  - ENS resolved: {metadata.get('ens_resolved', 0)}")
+        
+        return ens_mapping
+    except Exception as e:
+        print(f"Error loading ENS cache from {cache_file}: {e}")
+        return None
+
+
+def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexers.json', use_cached_ens: bool = False) -> bool:
+    """
+    Retrieve the list of active indexers with self stake > 0 from The Graph's network subgraph.
+    ENS resolution can be cached or fetched from subgraph based on use_cached_ens parameter.
+    
+    This function retrieves the list of active indexers. ENS names are either loaded from
+    cache or fetched from the ENS subgraph, then saved separately.
     
     Args:
         graph_api_key: The Graph API key for querying the network subgraph
         output_file: Path to the output file (default: active_indexers.json)
+        use_cached_ens: If True, use cached ENS data; if False, fetch from subgraph
         
     Returns:
         True if successful, False otherwise
@@ -340,80 +401,92 @@ def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexe
         # Extract all addresses for ENS lookup
         addresses = [indexer.get("id", "").lower() for indexer in indexers_raw]
         
-        # Query ENS subgraph to resolve names
-        print(f"Querying ENS subgraph for name resolution...")
-        
-        # Build ENS query - query in batches if needed
+        # Determine ENS resolution strategy
         ens_mapping = {}
-        batch_size = 100
         
-        for i in range(0, len(addresses), batch_size):
-            batch_addresses = addresses[i:i+batch_size]
+        if use_cached_ens:
+            print(f"Using cached ENS data...")
+            cached_ens = load_ens_cache()
+            if cached_ens:
+                ens_mapping = cached_ens
+            else:
+                print(f"⚠ Cache not available, will fetch from subgraph")
+                use_cached_ens = False
+        
+        if not use_cached_ens:
+            # Query ENS subgraph to resolve names
+            print(f"Querying ENS subgraph for name resolution...")
             
-            # Build the where clause for this batch
-            addresses_filter = '", "'.join(batch_addresses)
-            ens_query = f"""
-            {{
-              domains(first: 1000, where: {{resolvedAddress_in: ["{addresses_filter}"]}}) {{
-                name
-                resolvedAddress {{
-                  id
+            # Build ENS query - query in batches if needed
+            batch_size = 100
+            
+            for i in range(0, len(addresses), batch_size):
+                batch_addresses = addresses[i:i+batch_size]
+                
+                # Build the where clause for this batch
+                addresses_filter = '", "'.join(batch_addresses)
+                ens_query = f"""
+                {{
+                  domains(first: 1000, where: {{resolvedAddress_in: ["{addresses_filter}"]}}) {{
+                    name
+                    resolvedAddress {{
+                      id
+                    }}
+                  }}
                 }}
-              }}
-            }}
-            """
-            
-            try:
-                ens_response = requests.post(
-                    ens_url,
-                    json={"query": ens_query},
-                    headers={"Content-Type": "application/json"},
-                    timeout=30
-                )
-                ens_response.raise_for_status()
+                """
                 
-                ens_data = ens_response.json()
-                
-                if "errors" in ens_data:
-                    print(f"⚠ ENS query error for batch {i//batch_size + 1}: {ens_data['errors']}")
+                try:
+                    ens_response = requests.post(
+                        ens_url,
+                        json={"query": ens_query},
+                        headers={"Content-Type": "application/json"},
+                        timeout=30
+                    )
+                    ens_response.raise_for_status()
+                    
+                    ens_data = ens_response.json()
+                    
+                    if "errors" in ens_data:
+                        print(f"⚠ ENS query error for batch {i//batch_size + 1}: {ens_data['errors']}")
+                        continue
+                    
+                    # Map addresses to ENS names
+                    domains = ens_data.get("data", {}).get("domains", [])
+                    for domain in domains:
+                        resolved_addr = domain.get("resolvedAddress", {})
+                        if resolved_addr:
+                            addr_id = resolved_addr.get("id", "").lower()
+                            ens_name = domain.get("name", "")
+                            if addr_id and ens_name:
+                                ens_mapping[addr_id] = ens_name
+                    
+                except Exception as e:
+                    print(f"⚠ Error querying ENS for batch {i//batch_size + 1}: {e}")
                     continue
-                
-                # Map addresses to ENS names
-                domains = ens_data.get("data", {}).get("domains", [])
-                for domain in domains:
-                    resolved_addr = domain.get("resolvedAddress", {})
-                    if resolved_addr:
-                        addr_id = resolved_addr.get("id", "").lower()
-                        ens_name = domain.get("name", "")
-                        if addr_id and ens_name:
-                            ens_mapping[addr_id] = ens_name
-                
-            except Exception as e:
-                print(f"⚠ Error querying ENS for batch {i//batch_size + 1}: {e}")
-                continue
+            
+            print(f"✓ Resolved {len(ens_mapping)} ENS names")
+            
+            # Save ENS cache for future use
+            save_ens_cache(ens_mapping)
         
-        print(f"✓ Resolved {len(ens_mapping)} ENS names")
-        
-        # Build the JSON structure
+        # Build the JSON structure (without ENS names)
         current_timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
         
         output_data = {
             "metadata": {
                 "retrieved": current_timestamp,
-                "total_count": len(indexers_raw),
-                "ens_resolved": len(ens_mapping)
+                "total_count": len(indexers_raw)
             },
             "indexers": []
         }
         
-        # Process each indexer with ENS name
+        # Process each indexer without ENS name
         for indexer in indexers_raw:
             address = indexer.get("id", "")
-            address_lower = address.lower()
             
             indexer_data = {
                 "address": address,
-                "ens_name": ens_mapping.get(address_lower, ""),
                 "is_eligible": False,
                 "status": "",
                 "eligible_until": "",
@@ -652,14 +725,14 @@ def read_indexers_data(filename: str = 'indexers.txt') -> List[Tuple[str, str]]:
 
 def renderIndexerTable(json_file: str = 'active_indexers.json') -> List[dict]:
     """
-    Read eligible indexers from the active_indexers.json file.
+    Read eligible indexers from the active_indexers.json file and merge with ENS data.
     Only returns indexers where is_eligible = true.
     
     Args:
         json_file: Path to the active_indexers.json file
         
     Returns:
-        List of dictionaries containing eligible indexer data
+        List of dictionaries containing eligible indexer data with ENS names
     """
     eligible_indexers = []
     
@@ -673,10 +746,20 @@ def renderIndexerTable(json_file: str = 'active_indexers.json') -> List[dict]:
         
         indexers = data.get("indexers", [])
         
-        # Filter only eligible indexers
+        # Load ENS data from cache
+        ens_mapping = load_ens_cache() or {}
+        
+        # Filter only eligible indexers and merge with ENS data
         for indexer in indexers:
             if indexer.get("is_eligible", False):
-                eligible_indexers.append(indexer)
+                address = indexer.get("address", "")
+                address_lower = address.lower()
+                
+                # Create a copy of the indexer data and add ENS name
+                indexer_with_ens = indexer.copy()
+                indexer_with_ens["ens_name"] = ens_mapping.get(address_lower, "")
+                
+                eligible_indexers.append(indexer_with_ens)
         
         print(f"✓ Loaded {len(eligible_indexers)} eligible indexers from {json_file}")
         return eligible_indexers
@@ -1316,11 +1399,14 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         ens_class = "ens-name" if ens_name else "empty-ens"
         explorer_url = f"https://thegraph.com/explorer/profile/{address}?view=Indexing&chain=arbitrum-one"
         
+        # Set status badge for eligible indexers
+        status_badge = '<span class="legend-badge good">eligible</span>'
+        
         html_content += f"""                    <tr>
                         <td>{i}</td>
                         <td><a href="{explorer_url}" target="_blank" class="address-link"><span class="address">{address}</span><svg class="external-link-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2.5a.5.5 0 0 0-.5-.5h-6a.5.5 0 0 0 0 1h4.793L8.146 7.146a.5.5 0 0 0 .708.708L13 3.707V8.5a.5.5 0 0 0 1 0v-6z"/><path d="M4.5 4a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V9a.5.5 0 0 0-1 0v3H5V5h3a.5.5 0 0 0 0-1h-3.5z"/></svg></a></td>
                         <td><span class="{ens_class}">{ens_display}</span></td>
-                        <td></td>
+                        <td>{status_badge}</td>
                         <td></td>
                     </tr>
 """
@@ -1344,7 +1430,9 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     for i, indexer in enumerate(eligible_indexers, 1):
         address = indexer.get("address", "")
         ens_name = indexer.get("ens_name", "")
-        html_content += f"""            [{i}, "{address}", "{ens_name}", "", ""],
+        # Set status for eligible indexers
+        status = '<span class="legend-badge good">eligible</span>'
+        html_content += f"""            [{i}, "{address}", "{ens_name}", '{status}', ""],
 """
 
     html_content += """        ];
@@ -1487,9 +1575,12 @@ def main():
     
     # Retrieve active indexers by querying network subgraph
     graph_api_key = os.getenv("GRAPH_API_KEY")
+    use_cached_ens = os.getenv("USE_CACHED_ENS", "N").upper() == "Y"
+    
     if graph_api_key and graph_api_key != "your_graph_api_key_here":
         print()
-        retrieveActiveIndexers(graph_api_key)
+        print(f"ENS Cache Mode: {'ENABLED (using cached ENS data)' if use_cached_ens else 'DISABLED (fetching from subgraph)'}")
+        retrieveActiveIndexers(graph_api_key, use_cached_ens=use_cached_ens)
         print()
     else:
         print("⚠ GRAPH_API_KEY not set, skipping active indexers retrieval")

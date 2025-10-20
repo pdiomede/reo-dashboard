@@ -1,0 +1,13 @@
+{
+  "metadata": {
+    "retrieved": "2025-10-20 14:23:03 UTC",
+    "total_count": 3,
+    "ens_resolved": 3
+  },
+  "ens_resolutions": {
+    "0x0058223c6617cca7ce76fc929ec9724cd43d4542": "grassets-tech-2.eth",
+    "0x01f17c392614c7ea586e7272ed348efee21b90a3": "oraclegen-indexer.eth",
+    "0x0874e792462406dc12ee96b75e52a3bdbba3a123": "posthuman-validator.eth"
+  }
+}
+

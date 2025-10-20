@@ -974,6 +974,46 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             color: #9CA3AF;
         }}
         
+        .counters-section {{
+            padding: 25px 30px;
+            background: #0C0A1D;
+            border-bottom: 1px solid #9CA3AF;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }}
+        
+        .counter-item {{
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }}
+        
+        .counter-label {{
+            color: #9CA3AF;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: center;
+        }}
+        
+        .counter-value {{
+            color: #F8F6FF;
+            font-size: 32px;
+            font-weight: 600;
+            text-align: center;
+        }}
+        
+        .counter-value.eligible-count {{
+            color: #22c55e;
+        }}
+        
+        .counter-value.ineligible-count {{
+            color: #ef4444;
+        }}
+        
         .table-container {{
             padding: 0 30px 30px;
             overflow-x: auto;
@@ -1257,6 +1297,11 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 padding: 20px;
             }}
             
+            .counters-section {{
+                flex-direction: column;
+                padding: 20px;
+            }}
+            
             .stats {{
                 flex-direction: column;
                 gap: 10px;
@@ -1298,6 +1343,28 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                     <span class="legend-badge ineligible">ineligible</span>
                     <span class="legend-description">Indexer is not eligible for rewards</span>
                 </div>
+            </div>
+        </div>"""
+    
+    # Calculate counters
+    total_indexers = len(all_indexers)
+    eligible_count = sum(1 for indexer in all_indexers if indexer.get("is_eligible", False))
+    ineligible_count = total_indexers - eligible_count
+    
+    html_content += f"""
+        
+        <div class="counters-section">
+            <div class="counter-item">
+                <span class="counter-label">Active Indexers:</span>
+                <span class="counter-value">{total_indexers}</span>
+            </div>
+            <div class="counter-item">
+                <span class="counter-label">Eligible Indexers (including grace):</span>
+                <span class="counter-value eligible-count">{eligible_count}</span>
+            </div>
+            <div class="counter-item">
+                <span class="counter-label">Ineligible:</span>
+                <span class="counter-value ineligible-count">{ineligible_count}</span>
             </div>
         </div>
         

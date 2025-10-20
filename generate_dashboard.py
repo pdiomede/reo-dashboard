@@ -284,11 +284,13 @@ def save_ens_cache(ens_mapping: dict, cache_file: str = 'ens_resolution.json') -
     try:
         current_timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
         
+        ens_resolved_count = len([name for name in ens_mapping.values() if name])
+        
         cache_data = {
             "metadata": {
                 "retrieved": current_timestamp,
                 "total_count": len(ens_mapping),
-                "ens_resolved": len([name for name in ens_mapping.values() if name])
+                "ens_resolved": ens_resolved_count
             },
             "ens_resolutions": ens_mapping
         }
@@ -296,9 +298,11 @@ def save_ens_cache(ens_mapping: dict, cache_file: str = 'ens_resolution.json') -
         with open(cache_file, 'w', encoding='utf-8') as f:
             json.dump(cache_data, f, indent=2)
         
-        print(f"✓ ENS cache saved to {cache_file}")
+        print(f"✓ ENS cache updated and saved to {cache_file}")
+        print(f"  - Total addresses: {len(ens_mapping)}")
+        print(f"  - ENS names resolved: {ens_resolved_count}")
     except Exception as e:
-        print(f"Error saving ENS cache to {cache_file}: {e}")
+        print(f"❌ Error saving ENS cache to {cache_file}: {e}")
 
 
 def load_ens_cache(cache_file: str = 'ens_resolution.json') -> Optional[dict]:

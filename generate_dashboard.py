@@ -1376,6 +1376,10 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                     <span class="legend-description">Indexer is eligible for rewards</span>
                 </div>
                 <div class="legend-item">
+                    <span class="legend-badge grace">grace</span>
+                    <span class="legend-description">Grace period active (coming soon)</span>
+                </div>
+                <div class="legend-item">
                     <span class="legend-badge ineligible">ineligible</span>
                     <span class="legend-description">Indexer is not eligible for rewards</span>
                 </div>

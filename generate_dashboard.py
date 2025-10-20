@@ -1579,7 +1579,15 @@ def main():
     
     if graph_api_key and graph_api_key != "your_graph_api_key_here":
         print()
-        print(f"ENS Cache Mode: {'ENABLED (using cached ENS data)' if use_cached_ens else 'DISABLED (fetching from subgraph)'}")
+        print("=" * 60)
+        if use_cached_ens:
+            print("🔄 ENS Cache Mode: ENABLED")
+            print("   Using cached ENS data from ens_resolution.json")
+        else:
+            print("🌐 ENS Cache Mode: DISABLED")
+            print("   Fetching fresh ENS data from subgraph")
+        print("=" * 60)
+        print()
         retrieveActiveIndexers(graph_api_key, use_cached_ens=use_cached_ens)
         print()
     else:

@@ -14,7 +14,7 @@ from typing import List, Tuple, Optional
 from dotenv import load_dotenv
 
 # Version of the dashboard generator
-VERSION = "0.0.3"
+VERSION = "0.0.4"
 
 
 def get_last_transaction_from_json(json_file: str = 'last_transaction.json') -> Optional[dict]:
@@ -725,16 +725,16 @@ def read_indexers_data(filename: str = 'indexers.txt') -> List[Tuple[str, str]]:
 
 def renderIndexerTable(json_file: str = 'active_indexers.json') -> List[dict]:
     """
-    Read eligible indexers from the active_indexers.json file and merge with ENS data.
-    Only returns indexers where is_eligible = true.
+    Read all indexers from the active_indexers.json file and merge with ENS data.
+    Returns all indexers regardless of eligibility status.
     
     Args:
         json_file: Path to the active_indexers.json file
         
     Returns:
-        List of dictionaries containing eligible indexer data with ENS names
+        List of dictionaries containing all indexer data with ENS names
     """
-    eligible_indexers = []
+    all_indexers = []
     
     try:
         if not os.path.exists(json_file):
@@ -749,20 +749,25 @@ def renderIndexerTable(json_file: str = 'active_indexers.json') -> List[dict]:
         # Load ENS data from cache
         ens_mapping = load_ens_cache() or {}
         
-        # Filter only eligible indexers and merge with ENS data
+        # Process all indexers and merge with ENS data
+        eligible_count = 0
         for indexer in indexers:
+            address = indexer.get("address", "")
+            address_lower = address.lower()
+            
+            # Create a copy of the indexer data and add ENS name
+            indexer_with_ens = indexer.copy()
+            indexer_with_ens["ens_name"] = ens_mapping.get(address_lower, "")
+            
+            all_indexers.append(indexer_with_ens)
+            
             if indexer.get("is_eligible", False):
-                address = indexer.get("address", "")
-                address_lower = address.lower()
-                
-                # Create a copy of the indexer data and add ENS name
-                indexer_with_ens = indexer.copy()
-                indexer_with_ens["ens_name"] = ens_mapping.get(address_lower, "")
-                
-                eligible_indexers.append(indexer_with_ens)
+                eligible_count += 1
         
-        print(f"✓ Loaded {len(eligible_indexers)} eligible indexers from {json_file}")
-        return eligible_indexers
+        print(f"✓ Loaded {len(all_indexers)} indexers from {json_file}")
+        print(f"  - Eligible: {eligible_count}")
+        print(f"  - Ineligible: {len(all_indexers) - eligible_count}")
+        return all_indexers
         
     except Exception as e:
         print(f"Error reading {json_file}: {e}")
@@ -783,9 +788,9 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     """
     current_time = datetime.now(timezone.utc).strftime("%d %b %Y at %H:%M (UTC)")
     
-    # Load eligible indexers from JSON file
-    print("Loading eligible indexers for dashboard...")
-    eligible_indexers = renderIndexerTable()
+    # Load all indexers from JSON file
+    print("Loading indexers for dashboard...")
+    all_indexers = renderIndexerTable()
     
     # Fetch last transaction data
     print("Fetching last transaction data...")
@@ -1363,16 +1368,12 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             <div class="legend-title">Status Legend</div>
             <div class="legend-items">
                 <div class="legend-item">
-                    <span class="legend-badge good">Good</span>
-                    <span class="legend-description">Indexer is eligible</span>
+                    <span class="legend-badge good">eligible</span>
+                    <span class="legend-description">Indexer is eligible for rewards</span>
                 </div>
                 <div class="legend-item">
-                    <span class="legend-badge grace">Grace</span>
-                    <span class="legend-description">Grace period active</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-badge ineligible">Ineligible</span>
-                    <span class="legend-description">Not eligible</span>
+                    <span class="legend-badge ineligible">ineligible</span>
+                    <span class="legend-description">Indexer is not eligible for rewards</span>
                 </div>
             </div>
         </div>
@@ -1391,16 +1392,20 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 <tbody id="tableBody">
 """
 
-    # Add table rows from eligible indexers
-    for i, indexer in enumerate(eligible_indexers, 1):
+    # Add table rows from all indexers
+    for i, indexer in enumerate(all_indexers, 1):
         address = indexer.get("address", "")
         ens_name = indexer.get("ens_name", "")
+        is_eligible = indexer.get("is_eligible", False)
         ens_display = ens_name if ens_name else "No ENS"
         ens_class = "ens-name" if ens_name else "empty-ens"
         explorer_url = f"https://thegraph.com/explorer/profile/{address}?view=Indexing&chain=arbitrum-one"
         
-        # Set status badge for eligible indexers
-        status_badge = '<span class="legend-badge good">eligible</span>'
+        # Set status badge based on eligibility
+        if is_eligible:
+            status_badge = '<span class="legend-badge good">eligible</span>'
+        else:
+            status_badge = '<span class="legend-badge ineligible">ineligible</span>'
         
         html_content += f"""                    <tr>
                         <td>{i}</td>
@@ -1416,8 +1421,8 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         </div>
         
         <div class="stats">
-            <div class="total-count">Total Eligible Indexers: <span id="totalCount">""" + str(len(eligible_indexers)) + """</span></div>
-            <div class="filtered-count">Showing: <span id="filteredCount">""" + str(len(eligible_indexers)) + """</span></div>
+            <div class="total-count">Total Indexers: <span id="totalCount">""" + str(len(all_indexers)) + """</span></div>
+            <div class="filtered-count">Showing: <span id="filteredCount">""" + str(len(all_indexers)) + """</span></div>
         </div>
     </div>
 
@@ -1426,12 +1431,16 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         const originalData = [
 """
 
-    # Add JavaScript data from eligible indexers
-    for i, indexer in enumerate(eligible_indexers, 1):
+    # Add JavaScript data from all indexers
+    for i, indexer in enumerate(all_indexers, 1):
         address = indexer.get("address", "")
         ens_name = indexer.get("ens_name", "")
-        # Set status for eligible indexers
-        status = '<span class="legend-badge good">eligible</span>'
+        is_eligible = indexer.get("is_eligible", False)
+        # Set status based on eligibility
+        if is_eligible:
+            status = '<span class="legend-badge good">eligible</span>'
+        else:
+            status = '<span class="legend-badge ineligible">ineligible</span>'
         html_content += f"""            [{i}, "{address}", "{ens_name}", '{status}', ""],
 """
 

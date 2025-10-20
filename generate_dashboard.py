@@ -1283,50 +1283,9 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                    autocomplete="off">
         </div>
         
-        <div class="contract-info">
-            <h3>Contract Information (FOR DEBUG ONLY)</h3>
-            <div class="info-item">
-                <span class="info-label">Sepolia Contract on Arbitrum:</span>
-                <span class="info-value"><a href="https://sepolia.arbiscan.io/address/{contract_address}" target="_blank" class="transaction-hash">{contract_address}</a></span>
-            </div>"""
+        <div class="contract-info">"""
     
-    # Add last transaction data
-    if last_transaction:
-        tx_hash = last_transaction.get('hash', 'N/A')
-        block_number = last_transaction.get('blockNumber', 'N/A')
-        timestamp = last_transaction.get('timeStamp', 'N/A')
-        
-        # Convert timestamp to readable format
-        if timestamp != 'N/A':
-            try:
-                timestamp_int = int(timestamp)
-                readable_time = datetime.fromtimestamp(timestamp_int, tz=timezone.utc).strftime("%d %b %Y at %H:%M (UTC)")
-            except:
-                readable_time = timestamp
-        else:
-            readable_time = 'N/A'
-        
-        html_content += f"""
-            <div class="info-item">
-                <span class="info-label">Last Transaction ID:</span>
-                <span class="info-value"><a href="https://sepolia.arbiscan.io/tx/{tx_hash}" target="_blank" class="transaction-hash">{tx_hash}</a></span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Block Number:</span>
-                <span class="info-value">{block_number}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Transaction Time:</span>
-                <span class="info-value">{readable_time}</span>
-            </div>"""
-    else:
-        html_content += """
-            <div class="info-item">
-                <span class="info-label">Last Transaction ID:</span>
-                <span class="info-value"><span class="error-message">Unable to fetch transaction data</span></span>
-            </div>"""
-    
-    # Add oracle update time
+    # Add oracle update time only
     if oracle_update_time:
         try:
             oracle_readable_time = datetime.fromtimestamp(oracle_update_time, tz=timezone.utc).strftime("%d %b %Y at %H:%M:%S (UTC)")
@@ -1347,22 +1306,6 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             <div class="info-item">
                 <span class="info-label">Last Oracle Update Time:</span>
                 <span class="info-value"><span class="error-message">Unable to fetch oracle update time</span></span>
-            </div>"""
-    
-    # Add eligibility period
-    if eligibility_period:
-        # Convert seconds to days
-        days = eligibility_period / 86400
-        html_content += f"""
-            <div class="info-item">
-                <span class="info-label">Eligibility Period:</span>
-                <span class="info-value">{eligibility_period} seconds ({days:.1f} days)</span>
-            </div>"""
-    else:
-        html_content += """
-            <div class="info-item">
-                <span class="info-label">Eligibility Period:</span>
-                <span class="info-value"><span class="error-message">Unable to fetch eligibility period</span></span>
             </div>"""
     
     html_content += """

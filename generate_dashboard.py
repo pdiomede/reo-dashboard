@@ -1112,6 +1112,10 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             color: #22c55e;
         }}
         
+        .counter-value.grace-count {{
+            color: #eab308;
+        }}
+        
         .counter-value.ineligible-count {{
             color: #ef4444;
         }}
@@ -1519,8 +1523,9 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     
     # Calculate counters
     total_indexers = len(all_indexers)
-    eligible_count = sum(1 for indexer in all_indexers if indexer.get("is_eligible", False))
-    ineligible_count = total_indexers - eligible_count
+    eligible_count = sum(1 for indexer in all_indexers if indexer.get("status") == "eligible")
+    grace_count = sum(1 for indexer in all_indexers if indexer.get("status") == "grace")
+    ineligible_count = sum(1 for indexer in all_indexers if indexer.get("status") == "ineligible")
     
     html_content += f"""
         
@@ -1530,11 +1535,15 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 <span class="counter-value">{total_indexers}</span>
             </div>
             <div class="counter-item">
-                <span class="counter-label">Eligible Indexers (including grace):</span>
+                <span class="counter-label">Eligible Indexers:</span>
                 <span class="counter-value eligible-count">{eligible_count}</span>
             </div>
             <div class="counter-item">
-                <span class="counter-label">Ineligible:</span>
+                <span class="counter-label">In Grace Period:</span>
+                <span class="counter-value grace-count">{grace_count}</span>
+            </div>
+            <div class="counter-item">
+                <span class="counter-label">Ineligible Indexers:</span>
                 <span class="counter-value ineligible-count">{ineligible_count}</span>
             </div>
         </div>

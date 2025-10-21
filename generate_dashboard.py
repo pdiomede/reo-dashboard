@@ -986,8 +986,9 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         }}
         
         .search-wrapper {{
-            flex: 1;
+            flex: 0 0 45%;
             min-width: 300px;
+            max-width: 500px;
         }}
         
         .search-box {{
@@ -1514,23 +1515,6 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 <h1>Eligibility Dashboard</h1>
             </div>
             <div class="subtitle">Last Update: {current_time}</div>
-        </div>
-        
-        <div class="search-container">
-            <div class="search-wrapper">
-                <input type="text" 
-                       class="search-box" 
-                       id="searchInput" 
-                       placeholder="Search by indexer address or ENS name..."
-                       autocomplete="off">
-            </div>
-            <div class="filter-wrapper">
-                <span class="filter-label">Filter by Status:</span>
-                <button class="filter-btn eligible" onclick="filterByStatus('eligible')">eligible</button>
-                <button class="filter-btn grace" onclick="filterByStatus('grace')">grace</button>
-                <button class="filter-btn ineligible" onclick="filterByStatus('ineligible')">ineligible</button>
-                <button class="filter-btn reset" onclick="resetFilter()">Reset</button>
-            </div>
         </div>"""
     
     # Calculate counters
@@ -1552,6 +1536,23 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             <div class="counter-item">
                 <span class="counter-label">Ineligible:</span>
                 <span class="counter-value ineligible-count">{ineligible_count}</span>
+            </div>
+        </div>
+        
+        <div class="search-container">
+            <div class="search-wrapper">
+                <input type="text" 
+                       class="search-box" 
+                       id="searchInput" 
+                       placeholder="Search by indexer address or ENS name..."
+                       autocomplete="off">
+            </div>
+            <div class="filter-wrapper">
+                <span class="filter-label">Filter by Status:</span>
+                <button class="filter-btn eligible" onclick="filterByStatus('eligible')">eligible</button>
+                <button class="filter-btn grace" onclick="filterByStatus('grace')">grace</button>
+                <button class="filter-btn ineligible" onclick="filterByStatus('ineligible')">ineligible</button>
+                <button class="filter-btn reset" onclick="resetFilter()">Reset</button>
             </div>
         </div>
         

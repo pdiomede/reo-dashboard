@@ -75,8 +75,9 @@
         }
         
         .search-wrapper {
-            flex: 1;
+            flex: 0 0 45%;
             min-width: 300px;
+            max-width: 500px;
         }
         
         .search-box {
@@ -602,7 +603,22 @@
                 <img src="grt.png" alt="GRT" class="header-icon">
                 <h1>Eligibility Dashboard</h1>
             </div>
-            <div class="subtitle">Last Update: 21 Oct 2025 at 09:27 (UTC)</div>
+            <div class="subtitle">Last Update: 21 Oct 2025 at 09:35 (UTC)</div>
+        </div>
+        
+        <div class="counters-section">
+            <div class="counter-item">
+                <span class="counter-label">Active Indexers:</span>
+                <span class="counter-value">99</span>
+            </div>
+            <div class="counter-item">
+                <span class="counter-label">Eligible Indexers (including grace):</span>
+                <span class="counter-value eligible-count">62</span>
+            </div>
+            <div class="counter-item">
+                <span class="counter-label">Ineligible:</span>
+                <span class="counter-value ineligible-count">37</span>
+            </div>
         </div>
         
         <div class="search-container">
@@ -619,21 +635,6 @@
                 <button class="filter-btn grace" onclick="filterByStatus('grace')">grace</button>
                 <button class="filter-btn ineligible" onclick="filterByStatus('ineligible')">ineligible</button>
                 <button class="filter-btn reset" onclick="resetFilter()">Reset</button>
-            </div>
-        </div>
-        
-        <div class="counters-section">
-            <div class="counter-item">
-                <span class="counter-label">Active Indexers:</span>
-                <span class="counter-value">99</span>
-            </div>
-            <div class="counter-item">
-                <span class="counter-label">Eligible Indexers (including grace):</span>
-                <span class="counter-value eligible-count">62</span>
-            </div>
-            <div class="counter-item">
-                <span class="counter-label">Ineligible:</span>
-                <span class="counter-value ineligible-count">37</span>
             </div>
         </div>
         

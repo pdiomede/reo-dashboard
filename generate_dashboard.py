@@ -1555,6 +1555,14 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             color: #9CA3AF;
         }}
         
+        .footer-line.first {{
+            color: #4C66FF;
+        }}
+        
+        .footer-line.first a {{
+            color: #4C66FF;
+        }}
+        
         .footer-line a {{
             color: #9CA3AF;
             text-decoration: none;
@@ -1933,7 +1941,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     # Add footer with version and credits
     html_content += f"""    
     <div class="footer">
-        <div class="footer-line">
+        <div class="footer-line first">
             This dashboard is based on the GIP-0079: Indexer Rewards Eligibility Oracle. More info can be <a href="https://forum.thegraph.com/t/gip-0079-indexer-rewards-eligibility-oracle/6734" target="_blank">found here</a>
         </div>
         <div class="footer-content">

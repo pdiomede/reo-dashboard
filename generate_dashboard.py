@@ -1819,6 +1819,9 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     # Add footer with version and credits
     html_content += f"""    
     <div class="footer">
+        <div class="footer-line">
+            This dashboard is based on the GIP-0079: Indexer Rewards Eligibility Oracle. More info can be found <a href="https://forum.thegraph.com/t/gip-0079-indexer-rewards-eligibility-oracle/6734" target="_blank">here</a>
+        </div>
         <div class="footer-content">
             <span class="version">v{VERSION}</span>
             <span class="footer-separator">-</span>

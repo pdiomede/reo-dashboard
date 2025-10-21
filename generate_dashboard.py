@@ -14,7 +14,7 @@ from typing import List, Tuple, Optional
 from dotenv import load_dotenv
 
 # Version of the dashboard generator
-VERSION = "0.0.4"
+VERSION = "0.0.5"
 
 
 def get_last_transaction_from_json(json_file: str = 'last_transaction.json') -> Optional[dict]:
@@ -337,7 +337,7 @@ def load_ens_cache(cache_file: str = 'ens_resolution.json') -> Optional[dict]:
         return None
 
 
-def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexers.json', use_cached_ens: bool = False) -> bool:
+def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexers.json', use_cached_ens: bool = False, contract_address: Optional[str] = None, quicknode_url: Optional[str] = None) -> bool:
     """
     Retrieve the list of active indexers with self stake > 0 from The Graph's network subgraph.
     ENS resolution can be cached or fetched from subgraph based on use_cached_ens parameter.
@@ -349,6 +349,8 @@ def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexe
         graph_api_key: The Graph API key for querying the network subgraph
         output_file: Path to the output file (default: active_indexers.json)
         use_cached_ens: If True, use cached ENS data; if False, fetch from subgraph
+        contract_address: The contract address to query oracle update time
+        quicknode_url: QuickNode RPC endpoint URL
         
     Returns:
         True if successful, False otherwise
@@ -477,10 +479,21 @@ def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexe
         # Build the JSON structure (without ENS names)
         current_timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
         
+        # Get oracle update time and eligibility period from contract if available
+        last_oracle_update_time = None
+        eligibility_period = None
+        if contract_address and quicknode_url:
+            print(f"Fetching last oracle update time from contract...")
+            last_oracle_update_time = get_oracle_update_time(contract_address, quicknode_url)
+            print(f"Fetching eligibility period from contract...")
+            eligibility_period = get_eligibility_period(contract_address, quicknode_url)
+        
         output_data = {
             "metadata": {
                 "retrieved": current_timestamp,
-                "total_count": len(indexers_raw)
+                "total_count": len(indexers_raw),
+                "last_oracle_update_time": last_oracle_update_time,
+                "eligibility_period": eligibility_period
             },
             "indexers": []
         }
@@ -494,6 +507,7 @@ def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexe
                 "is_eligible": False,
                 "status": "",
                 "eligible_until": "",
+                "eligible_until_readable": "",
                 "eligibility_renewal_time": ""
             }
             output_data["indexers"].append(indexer_data)
@@ -613,8 +627,8 @@ def checkEligibility(contract_address: str, quicknode_url: str, input_file: str 
         print(f"Pass 2: Getting eligibility renewal times for {eligible_count} eligible indexers...")
         
         # Function selector for getEligibilityRenewalTime(address)
-        # keccak256("getEligibilityRenewalTime(address)") = 0x5d4e8c95...
-        renewal_time_selector = '0x5d4e8c95'
+        # From contract: 0xd353402d
+        renewal_time_selector = '0xd353402d'
         
         updated_count = 0
         processed_count = 0
@@ -677,6 +691,57 @@ def checkEligibility(contract_address: str, quicknode_url: str, input_file: str 
         
         print(f"✓ Pass 2 complete: {updated_count} renewal times updated")
         
+        # ========== PASS 3: Update status based on eligibility_renewal_time comparison ==========
+        print(f"Pass 3: Updating status based on eligibility renewal time and grace period...")
+        
+        # Get last_oracle_update_time and eligibility_period from metadata
+        metadata = data.get("metadata", {})
+        last_oracle_update_time = metadata.get("last_oracle_update_time")
+        eligibility_period = metadata.get("eligibility_period")
+        
+        # Get current timestamp
+        current_time = int(datetime.now(timezone.utc).timestamp())
+        
+        eligible_status_count = 0
+        grace_status_count = 0
+        ineligible_status_count = 0
+        
+        for indexer in indexers:
+            eligibility_renewal_time = indexer.get("eligibility_renewal_time", 0)
+            
+            # Set status based on comparison with last_oracle_update_time and grace period
+            if last_oracle_update_time and eligibility_renewal_time == last_oracle_update_time:
+                # Indexer is eligible
+                indexer["status"] = "eligible"
+                indexer["eligible_until"] = ""
+                indexer["eligible_until_readable"] = ""
+                eligible_status_count += 1
+            elif eligibility_renewal_time != last_oracle_update_time and eligibility_period and eligibility_renewal_time > 0:
+                # Check if in grace period
+                grace_period_end = eligibility_renewal_time + eligibility_period
+                if current_time < grace_period_end:
+                    indexer["status"] = "grace"
+                    indexer["eligible_until"] = grace_period_end
+                    # Format: 2-Nov-2025 at 19:25:55 UTC (day without leading zero)
+                    dt = datetime.fromtimestamp(grace_period_end, tz=timezone.utc)
+                    indexer["eligible_until_readable"] = dt.strftime("%-d-%b-%Y at %H:%M:%S UTC")
+                    grace_status_count += 1
+                else:
+                    indexer["status"] = "ineligible"
+                    indexer["eligible_until"] = ""
+                    indexer["eligible_until_readable"] = ""
+                    ineligible_status_count += 1
+            else:
+                indexer["status"] = "ineligible"
+                indexer["eligible_until"] = ""
+                indexer["eligible_until_readable"] = ""
+                ineligible_status_count += 1
+        
+        print(f"✓ Pass 3 complete:")
+        print(f"  - Eligible: {eligible_status_count}")
+        print(f"  - Grace: {grace_status_count}")
+        print(f"  - Ineligible: {ineligible_status_count}")
+        
         # Write updated data back to JSON file
         with open(input_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
@@ -685,6 +750,7 @@ def checkEligibility(contract_address: str, quicknode_url: str, input_file: str 
         print(f"  - Total indexers: {len(indexers)}")
         print(f"  - Eligible indexers: {eligible_count}")
         print(f"  - Renewal times retrieved: {updated_count}")
+        print(f"  - Status breakdown: {eligible_status_count} eligible, {grace_status_count} grace, {ineligible_status_count} ineligible")
         print(f"✓ Results written to {input_file}")
         return True
         
@@ -755,6 +821,9 @@ def renderIndexerTable(json_file: str = 'active_indexers.json') -> List[dict]:
         
         # Process all indexers and merge with ENS data
         eligible_count = 0
+        grace_count = 0
+        ineligible_count = 0
+        
         for indexer in indexers:
             address = indexer.get("address", "")
             address_lower = address.lower()
@@ -763,14 +832,27 @@ def renderIndexerTable(json_file: str = 'active_indexers.json') -> List[dict]:
             indexer_with_ens = indexer.copy()
             indexer_with_ens["ens_name"] = ens_mapping.get(address_lower, "")
             
-            all_indexers.append(indexer_with_ens)
+            # Use status from JSON file (already calculated by checkEligibility)
+            status = indexer.get("status", "ineligible")
+            indexer_with_ens["status"] = status
             
-            if indexer.get("is_eligible", False):
+            # Set is_eligible based on status
+            if status == "eligible":
+                indexer_with_ens["is_eligible"] = True
                 eligible_count += 1
+            elif status == "grace":
+                indexer_with_ens["is_eligible"] = True  # Grace period indexers are still considered eligible
+                grace_count += 1
+            else:
+                indexer_with_ens["is_eligible"] = False
+                ineligible_count += 1
+            
+            all_indexers.append(indexer_with_ens)
         
         print(f"✓ Loaded {len(all_indexers)} indexers from {json_file}")
         print(f"  - Eligible: {eligible_count}")
-        print(f"  - Ineligible: {len(all_indexers) - eligible_count}")
+        print(f"  - Grace: {grace_count}")
+        print(f"  - Ineligible: {ineligible_count}")
         return all_indexers
         
     except Exception as e:
@@ -896,6 +978,16 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             padding: 25px 30px;
             background: #0C0A1D;
             border-bottom: 1px solid #9CA3AF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }}
+        
+        .search-wrapper {{
+            flex: 1;
+            min-width: 300px;
         }}
         
         .search-box {{
@@ -919,6 +1011,13 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             color: #9CA3AF;
         }}
         
+        .filter-wrapper {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }}
+        
         .legend {{
             padding: 20px 30px;
             background: #0C0A1D;
@@ -930,12 +1029,14 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             font-size: 14px;
             font-weight: 600;
             margin-bottom: 10px;
+            text-align: center;
         }}
         
         .legend-items {{
             display: flex;
             gap: 20px;
             flex-wrap: wrap;
+            justify-content: center;
         }}
         
         .legend-item {{
@@ -1012,6 +1113,71 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         
         .counter-value.ineligible-count {{
             color: #ef4444;
+        }}
+        
+        .filter-label {{
+            color: #9CA3AF;
+            font-size: 14px;
+            font-weight: 500;
+            margin-right: 5px;
+        }}
+        
+        .filter-btn {{
+            padding: 6px 14px;
+            border-radius: 12px;
+            font-weight: 500;
+            font-size: 12px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }}
+        
+        .filter-btn:hover {{
+            opacity: 0.8;
+            transform: translateY(-1px);
+        }}
+        
+        .filter-btn.eligible {{
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid #22c55e;
+        }}
+        
+        .filter-btn.eligible.active {{
+            background: #22c55e;
+            color: #0C0A1D;
+        }}
+        
+        .filter-btn.grace {{
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid #fbbf24;
+        }}
+        
+        .filter-btn.grace.active {{
+            background: #fbbf24;
+            color: #0C0A1D;
+        }}
+        
+        .filter-btn.ineligible {{
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }}
+        
+        .filter-btn.ineligible.active {{
+            background: #ef4444;
+            color: #0C0A1D;
+        }}
+        
+        .filter-btn.reset {{
+            background: rgba(156, 163, 175, 0.2);
+            color: #9CA3AF;
+            border: 1px solid #9CA3AF;
+        }}
+        
+        .filter-btn.reset:hover {{
+            background: rgba(156, 163, 175, 0.3);
         }}
         
         .table-container {{
@@ -1145,16 +1311,52 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         }}
         
         .contract-info {{
-            padding: 25px 30px;
             background: #0C0A1D;
             border-top: 1px solid #9CA3AF;
+        }}
+        
+        .contract-info-header {{
+            padding: 25px 30px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s ease;
+        }}
+        
+        .contract-info-header:hover {{
+            background: #1a1825;
         }}
         
         .contract-info h3 {{
             color: #F8F6FF;
             font-size: 1.3em;
-            margin-bottom: 15px;
+            margin: 0;
             font-weight: 500;
+        }}
+        
+        .contract-info-arrow {{
+            width: 20px;
+            height: 20px;
+            transition: transform 0.3s ease;
+            color: #9CA3AF;
+        }}
+        
+        .contract-info-arrow.expanded {{
+            transform: rotate(180deg);
+        }}
+        
+        .contract-info-content {{
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+            padding: 0 30px;
+        }}
+        
+        .contract-info-content.expanded {{
+            max-height: 1000px;
+            padding: 0 30px 25px 30px;
         }}
         
         .info-item {{
@@ -1227,6 +1429,17 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             color: #9CA3AF;
         }}
         
+        .footer-content a {{
+            color: #9CA3AF;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }}
+        
+        .footer-content a:hover {{
+            color: #F8F6FF;
+            text-decoration: underline;
+        }}
+        
         .footer-line {{
             margin-top: 8px;
             font-size: 14px;
@@ -1244,29 +1457,12 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             text-decoration: underline;
         }}
         
-        .footer-credits {{
-            margin-top: 8px;
-            font-size: 14px;
-            color: #9CA3AF;
-        }}
-        
         .github-icon {{
             display: inline-block;
             width: 16px;
             height: 16px;
             vertical-align: middle;
             margin-right: 5px;
-        }}
-        
-        .footer-credits a {{
-            color: #9CA3AF;
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }}
-        
-        .footer-credits a:hover {{
-            color: #F8F6FF;
-            text-decoration: underline;
         }}
         
         @media (max-width: 768px) {{
@@ -1321,28 +1517,19 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         </div>
         
         <div class="search-container">
-            <input type="text" 
-                   class="search-box" 
-                   id="searchInput" 
-                   placeholder="Search by indexer address or ENS name..."
-                   autocomplete="off">
-        </div>
-        
-        <div class="legend">
-            <div class="legend-title">Status Legend</div>
-            <div class="legend-items">
-                <div class="legend-item">
-                    <span class="legend-badge good">eligible</span>
-                    <span class="legend-description">Indexer is eligible for rewards</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-badge grace">grace</span>
-                    <span class="legend-description">Grace period active (coming soon)</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-badge ineligible">ineligible</span>
-                    <span class="legend-description">Indexer is not eligible for rewards</span>
-                </div>
+            <div class="search-wrapper">
+                <input type="text" 
+                       class="search-box" 
+                       id="searchInput" 
+                       placeholder="Search by indexer address or ENS name..."
+                       autocomplete="off">
+            </div>
+            <div class="filter-wrapper">
+                <span class="filter-label">Filter by Status:</span>
+                <button class="filter-btn eligible" onclick="filterByStatus('eligible')">eligible</button>
+                <button class="filter-btn grace" onclick="filterByStatus('grace')">grace</button>
+                <button class="filter-btn ineligible" onclick="filterByStatus('ineligible')">ineligible</button>
+                <button class="filter-btn reset" onclick="resetFilter()">Reset</button>
             </div>
         </div>"""
     
@@ -1372,18 +1559,26 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             <table id="indexersTable">
                 <thead>
                     <tr>
-                        <th class="sortable" data-column="0">#</th>
-                        <th class="sortable" data-column="1">Indexer Address</th>
-                        <th class="sortable" data-column="2">ENS Name</th>
-                        <th class="sortable" data-column="3">Status</th>
-                        <th class="sortable" data-column="4">Eligible Until</th>
+                        <th class="sortable" data-column="0">Indexer Address</th>
+                        <th class="sortable" data-column="1">ENS Name</th>
+                        <th class="sortable" data-column="2">Status</th>
+                        <th class="sortable" data-column="3">Eligible Until</th>
                     </tr>
                 </thead>
                 <tbody id="tableBody">
 """
 
-    # Add table rows from all indexers
-    for i, indexer in enumerate(all_indexers, 1):
+    # Sort indexers: first by eligibility (eligible first), then by ENS name
+    def sort_key(indexer):
+        is_eligible = indexer.get("is_eligible", False)
+        ens_name = indexer.get("ens_name", "")
+        # Eligible first (True < False becomes False, True for reverse), then by ENS (empty ENS last)
+        return (not is_eligible, ens_name.lower() if ens_name else "zzzzzzzzz")
+    
+    all_indexers_sorted = sorted(all_indexers, key=sort_key)
+
+    # Add table rows from sorted indexers
+    for i, indexer in enumerate(all_indexers_sorted, 1):
         address = indexer.get("address", "")
         ens_name = indexer.get("ens_name", "")
         is_eligible = indexer.get("is_eligible", False)
@@ -1398,7 +1593,6 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             status_badge = '<span class="legend-badge ineligible">ineligible</span>'
         
         html_content += f"""                    <tr>
-                        <td>{i}</td>
                         <td><a href="{explorer_url}" target="_blank" class="address-link"><span class="address">{address}</span><svg class="external-link-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2.5a.5.5 0 0 0-.5-.5h-6a.5.5 0 0 0 0 1h4.793L8.146 7.146a.5.5 0 0 0 .708.708L13 3.707V8.5a.5.5 0 0 0 1 0v-6z"/><path d="M4.5 4a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V9a.5.5 0 0 0-1 0v3H5V5h3a.5.5 0 0 0 0-1h-3.5z"/></svg></a></td>
                         <td><span class="{ens_class}">{ens_display}</span></td>
                         <td>{status_badge}</td>
@@ -1421,17 +1615,31 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         const originalData = [
 """
 
+    # Sort indexers: first by eligibility (eligible first), then by ENS name
+    def sort_key(indexer):
+        is_eligible = indexer.get("is_eligible", False)
+        ens_name = indexer.get("ens_name", "")
+        # Eligible first (True < False becomes False, True for reverse), then by ENS (empty ENS last)
+        return (not is_eligible, ens_name.lower() if ens_name else "zzzzzzzzz")
+    
+    all_indexers_sorted = sorted(all_indexers, key=sort_key)
+
     # Add JavaScript data from all indexers
-    for i, indexer in enumerate(all_indexers, 1):
+    for indexer in all_indexers_sorted:
         address = indexer.get("address", "")
         ens_name = indexer.get("ens_name", "")
-        is_eligible = indexer.get("is_eligible", False)
-        # Set status based on eligibility
-        if is_eligible:
-            status = '<span class="legend-badge good">eligible</span>'
+        status = indexer.get("status", "ineligible")
+        eligible_until_readable = indexer.get("eligible_until_readable", "")
+        
+        # Set status badge based on status
+        if status == "eligible":
+            status_badge = '<span class="legend-badge good">eligible</span>'
+        elif status == "grace":
+            status_badge = '<span class="legend-badge grace">grace</span>'
         else:
-            status = '<span class="legend-badge ineligible">ineligible</span>'
-        html_content += f"""            [{i}, "{address}", "{ens_name}", '{status}', ""],
+            status_badge = '<span class="legend-badge ineligible">ineligible</span>'
+        
+        html_content += f"""            ["{address}", "{ens_name}", '{status_badge}', "{eligible_until_readable}", "{status}"],
 """
 
     html_content += """        ];
@@ -1439,6 +1647,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         let currentData = [...originalData];
         let sortColumn = -1;
         let sortDirection = 'asc';
+        let activeFilter = null;
         
         // Search functionality
         const searchInput = document.getElementById('searchInput');
@@ -1446,15 +1655,53 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         const totalCount = document.getElementById('totalCount');
         const filteredCount = document.getElementById('filteredCount');
         
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            currentData = originalData.filter(row => 
-                row[1].toLowerCase().includes(searchTerm) || 
-                row[2].toLowerCase().includes(searchTerm)
-            );
+        // Apply both search and filter
+        function applyFilters() {
+            const searchTerm = searchInput.value.toLowerCase();
+            
+            currentData = originalData.filter(row => {
+                // Check search term
+                const matchesSearch = row[0].toLowerCase().includes(searchTerm) || 
+                                     row[1].toLowerCase().includes(searchTerm);
+                
+                // Check status filter (row[4] is the status string)
+                const matchesFilter = !activeFilter || row[4] === activeFilter;
+                
+                return matchesSearch && matchesFilter;
+            });
+            
             renderTable();
             updateStats();
-        });
+        }
+        
+        searchInput.addEventListener('input', applyFilters);
+        
+        // Filter by status functionality
+        function filterByStatus(status) {
+            // Toggle filter
+            if (activeFilter === status) {
+                activeFilter = null;
+                // Remove active class from all buttons
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            } else {
+                activeFilter = status;
+                // Remove active class from all buttons
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                // Add active class to clicked button
+                document.querySelector(`.filter-btn.${status}`).classList.add('active');
+            }
+            
+            applyFilters();
+        }
+        
+        // Reset filter
+        function resetFilter() {
+            activeFilter = null;
+            searchInput.value = '';
+            // Remove active class from all buttons
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            applyFilters();
+        }
         
         // Sorting functionality
         function sortTable(column) {
@@ -1466,17 +1713,22 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             }
             
             currentData.sort((a, b) => {
+                // First, always sort by eligibility (status column is now index 2)
+                const aStatus = a[2].includes('eligible') && !a[2].includes('ineligible') ? 1 : 0;
+                const bStatus = b[2].includes('eligible') && !b[2].includes('ineligible') ? 1 : 0;
+                
+                // If eligibility differs, sort eligible first
+                if (aStatus !== bStatus) {
+                    return bStatus - aStatus; // Higher status (eligible) first
+                }
+                
+                // Within same eligibility group, sort by the selected column
                 let aVal = a[column];
                 let bVal = b[column];
                 
-                // Handle numeric sorting for first column
-                if (column === 0) {
-                    aVal = parseInt(aVal);
-                    bVal = parseInt(bVal);
-                } else {
-                    aVal = aVal.toLowerCase();
-                    bVal = bVal.toLowerCase();
-                }
+                // All columns are now text, so convert to lowercase for comparison
+                aVal = aVal.toLowerCase();
+                bVal = bVal.toLowerCase();
                 
                 if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
                 if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
@@ -1490,14 +1742,13 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         function renderTable() {
             tableBody.innerHTML = '';
             currentData.forEach((row, index) => {
-                const [num, address, ensName, status, eligibleUntil] = row;
+                const [address, ensName, status, eligibleUntil, statusString] = row;
                 const ensDisplay = ensName || 'No ENS';
                 const ensClass = ensName ? 'ens-name' : 'empty-ens';
                 const explorerUrl = `https://thegraph.com/explorer/profile/${address}?view=Indexing&chain=arbitrum-one`;
                 
                 const rowHTML = `
                     <tr>
-                        <td>${num}</td>
                         <td><a href="${explorerUrl}" target="_blank" class="address-link"><span class="address">${address}</span></a></td>
                         <td><span class="${ensClass}">${ensDisplay}</span></td>
                         <td>${status}</td>
@@ -1534,28 +1785,52 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     </script>
 """
     
-    # Add footer with version and timestamp
+    # Add legend section before footer (commented out - using filter section instead)
+    # html_content += """
+    # <div class="legend">
+    #     <div class="legend-title">Status Legend</div>
+    #     <div class="legend-items">
+    #         <div class="legend-item">
+    #             <span class="legend-badge good">eligible</span>
+    #             <span class="legend-description">Indexer is eligible for rewards</span>
+    #         </div>
+    #         <div class="legend-item">
+    #             <span class="legend-badge grace">grace</span>
+    #             <span class="legend-description">Grace period active (coming soon)</span>
+    #         </div>
+    #         <div class="legend-item">
+    #             <span class="legend-badge ineligible">ineligible</span>
+    #             <span class="legend-description">Indexer is not eligible for rewards</span>
+    #         </div>
+    #     </div>
+    # </div>
+    # """
+    
+    # Add footer with version and credits
     html_content += f"""    
     <div class="footer">
         <div class="footer-content">
             <span class="version">v{VERSION}</span>
-            <span class="footer-separator">•</span>
-            <span>Last Update: {current_time}</span>
+            <span class="footer-separator">-</span>
+            <span>Created with ❤️ by <a href="https://x.com/pdiomede" target="_blank">pdiomede</a></span>
         </div>
         <div class="footer-line">
             <svg class="github-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>View repo on GitHub <a href="https://github.com/pdiomede/reo-dashboard" target="_blank">here</a>
         </div>
-        <div class="footer-credits">
-            Created with ❤️ by <a href="https://x.com/pdiomede" target="_blank">pdiomede</a>
-        </div>
     </div>
     
     <div class="contract-info">
-        <h3>Contract Information (FOR DEBUG ONLY - will be removed in the future)</h3>
-        <div class="info-item">
-            <span class="info-label">Sepolia Contract on Arbitrum:</span>
-            <span class="info-value"><a href="https://sepolia.arbiscan.io/address/{contract_address}" target="_blank" class="transaction-hash">{contract_address}</a></span>
-        </div>"""
+        <div class="contract-info-header" onclick="toggleContractInfo()">
+            <h3>Contract Information (FOR DEBUG ONLY - will be removed in the future)</h3>
+            <svg class="contract-info-arrow" id="contractInfoArrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+        </div>
+        <div class="contract-info-content" id="contractInfoContent">
+            <div class="info-item">
+                <span class="info-label">Sepolia Contract on Arbitrum:</span>
+                <span class="info-value"><a href="https://sepolia.arbiscan.io/address/{contract_address}" target="_blank" class="transaction-hash">{contract_address}</a></span>
+            </div>"""
     
     # Add oracle update time
     if oracle_update_time:
@@ -1618,7 +1893,17 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         </div>"""
     
     html_content += """
+        </div>
     </div>
+    
+    <script>
+        function toggleContractInfo() {
+            const content = document.getElementById('contractInfoContent');
+            const arrow = document.getElementById('contractInfoArrow');
+            content.classList.toggle('expanded');
+            arrow.classList.toggle('expanded');
+        }
+    </script>
 </body>
 </html>"""
 
@@ -1642,10 +1927,14 @@ def main():
         print("    2. Edit .env with your API keys")
         print()
     
-    # Retrieve active indexers by querying network subgraph
+    # Load environment variables (no hardcoded fallbacks)
     graph_api_key = os.getenv("GRAPH_API_KEY")
     use_cached_ens = os.getenv("USE_CACHED_ENS", "N").upper() == "Y"
+    contract_address = os.getenv("CONTRACT_ADDRESS")
+    api_key = os.getenv("ARBISCAN_API_KEY")
+    quicknode_url = os.getenv("QUICK_NODE")
     
+    # Retrieve active indexers by querying network subgraph
     if graph_api_key and graph_api_key != "your_graph_api_key_here":
         print()
         print("=" * 60)
@@ -1657,7 +1946,7 @@ def main():
             print("   Fetching fresh ENS data from subgraph")
         print("=" * 60)
         print()
-        retrieveActiveIndexers(graph_api_key, use_cached_ens=use_cached_ens)
+        retrieveActiveIndexers(graph_api_key, use_cached_ens=use_cached_ens, contract_address=contract_address, quicknode_url=quicknode_url)
         print()
     else:
         print("⚠ GRAPH_API_KEY not set, skipping active indexers retrieval")
@@ -1671,11 +1960,6 @@ def main():
         return
     
     print(f"Found {len(indexers)} indexers")
-    
-    # Load environment variables (no hardcoded fallbacks)
-    contract_address = os.getenv("CONTRACT_ADDRESS")
-    api_key = os.getenv("ARBISCAN_API_KEY")
-    quicknode_url = os.getenv("QUICK_NODE")
     
     # Validate required environment variables
     missing_vars = []

@@ -21,11 +21,16 @@ This system ensures that rewards are distributed only to indexers who actively s
 
 ## Features
 
-- 📊 **Sortable Table**: Click column headers to sort by number, address, or ENS name
+- 📊 **Smart Sorting**: Automatically sorts by eligibility status (eligible → grace → ineligible), then by ENS name
+- 🏷️ **Three Status Types**: 
+  - **Eligible**: Indexers with current eligibility (green badge)
+  - **Grace Period**: Indexers in 14-day grace period with expiration date (yellow badge)
+  - **Ineligible**: Indexers who lost eligibility (red badge)
 - 🔍 **Real-time Search**: Filter indexers by address or ENS name
 - 🔗 **Blockchain Integration**: Fetches live data from Arbitrum Sepolia via QuickNode RPC
-- ⏰ **Oracle Update Time**: Displays the last oracle update timestamp from the contract
-- 📱 **Responsive Design**: Mobile-friendly dark theme UI
+- ⏰ **Oracle Tracking**: Displays last oracle update time and 14-day eligibility period from contract
+- ⏳ **Grace Period Monitoring**: Shows when grace period expires for indexers in transition
+- 📱 **Responsive Design**: Mobile-friendly dark theme UI with collapsible sections
 - 💾 **Offline Fallback**: Can work with cached transaction data from JSON file
 
 ## How It Works
@@ -65,17 +70,26 @@ This system ensures that rewards are distributed only to indexers who actively s
 #### 1. **Active Indexers Retrieval**
 - **`retrieveActiveIndexers()`**: Queries The Graph's network subgraph to get indexers with self stake > 0
   - Queries network subgraph (deployment ID: `DZz4kDTdmzWLWsV373w2bSmoar3umKKH9y82SUKr5qmp`)
+  - Fetches contract metadata:
+    - Calls `getLastOracleUpdateTime()` (function selector: `0xbe626dd2`)
+    - Calls `getEligibilityPeriod()` (function selector: `0xd0a5379e`)
+    - Stores both values in metadata section of JSON
   - ENS resolution strategy (controlled by `USE_CACHED_ENS` environment variable):
     - **If `USE_CACHED_ENS=Y`**: Loads ENS names from `ens_resolution.json` cache file
     - **If `USE_CACHED_ENS=N`**: Queries ENS subgraph (deployment ID: `5XqPmWe6gjyrJtFn9cLy237i4cWw2j9HcUJEXsP5qGtH`) and updates cache
-  - Writes results to `active_indexers.json` with fields: `address`, `is_eligible`, `status`, `eligible_until`, `eligibility_renewal_time` (ENS stored separately)
+  - Writes results to `active_indexers.json` with fields: `address`, `is_eligible`, `status`, `eligible_until`, `eligible_until_readable`, `eligibility_renewal_time` (ENS stored separately)
   - ENS data saved to `ens_resolution.json` for caching
 
-#### 2. **Eligibility Check (Two-Pass Approach)**
+#### 2. **Eligibility Check (Three-Pass Approach)**
 - **`checkEligibility()`**: Checks eligibility status for all active indexers
   - **Pass 1**: Calls `isEligible(address)` on contract for all indexers, stores result in `is_eligible` field
-  - **Pass 2**: Only for eligible indexers, calls `getEligibilityRenewalTime(address)` and updates `eligibility_renewal_time`
-  - Updates `active_indexers.json` with eligibility data
+  - **Pass 2**: Only for eligible indexers, calls `getEligibilityRenewalTime(address)` (function selector: `0xd353402d`) and updates `eligibility_renewal_time`
+  - **Pass 3**: Determines final status based on eligibility renewal time and grace period:
+    - **"eligible"**: `eligibility_renewal_time == last_oracle_update_time`
+    - **"grace"**: `eligibility_renewal_time != last_oracle_update_time` AND `current_time < eligibility_renewal_time + eligibility_period`
+      - Sets `eligible_until` (Unix timestamp) and `eligible_until_readable` (human-readable format)
+    - **"ineligible"**: Grace period has expired or no eligibility renewal time
+  - Updates `active_indexers.json` with complete eligibility data including status
 
 #### 3. **Dashboard Rendering**
 - **`renderIndexerTable()`**: Reads `active_indexers.json` and returns all indexers
@@ -178,16 +192,22 @@ python3 generate_dashboard.py
 
 This will:
 1. **Retrieve active indexers** from The Graph's network subgraph (with self stake > 0)
-2. **Resolve ENS names**:
+2. **Fetch contract metadata**:
+   - Call `getLastOracleUpdateTime()` to get the latest oracle update timestamp
+   - Call `getEligibilityPeriod()` to get the grace period duration (14 days)
+3. **Resolve ENS names**:
    - If `USE_CACHED_ENS=Y`: Load ENS names from `ens_resolution.json` cache
    - If `USE_CACHED_ENS=N`: Query ENS subgraph and update `ens_resolution.json` cache
-3. **Check eligibility** for each indexer by calling the contract's `isEligible()` function
-4. **Get renewal times** for eligible indexers via `getEligibilityRenewalTime()`
-5. Save indexer data to `active_indexers.json` (without ENS names)
-6. **Render dashboard** showing all indexers with status badges (eligible/ineligible) merged with ENS names from cache
+4. **Check eligibility** (Three-Pass Approach):
+   - **Pass 1**: Call contract's `isEligible()` function for all indexers
+   - **Pass 2**: Call `getEligibilityRenewalTime()` for eligible indexers
+   - **Pass 3**: Determine status based on renewal time comparison and grace period:
+     - Set status to "eligible", "grace", or "ineligible"
+     - Calculate `eligible_until` for grace period indexers
+5. Save complete indexer data to `active_indexers.json` (without ENS names)
+6. **Render dashboard** showing all indexers with status badges (eligible/grace/ineligible) merged with ENS names from cache
 7. Fetch the latest transaction data
-8. Fetch the oracle update time from the contract
-9. Generate `index.html`
+8. Generate `index.html` with sorted table and interactive features
 
 ### Opening the Dashboard
 
@@ -239,25 +259,48 @@ Structure:
 ```json
 {
   "metadata": {
-    "retrieved": "2025-10-17 20:00:00 UTC",
-    "total_count": 100
+    "retrieved": "2025-10-21 08:00:00 UTC",
+    "total_count": 99,
+    "last_oracle_update_time": 1760956267,
+    "eligibility_period": 1209600
   },
   "indexers": [
     {
       "address": "0x0058223c6617cca7ce76fc929ec9724cd43d4542",
       "is_eligible": true,
-      "status": "",
+      "status": "eligible",
       "eligible_until": "",
-      "eligibility_renewal_time": 1760696509
+      "eligible_until_readable": "",
+      "eligibility_renewal_time": 1760956267
+    },
+    {
+      "address": "0x51637a35f7f054c98ed51904de939b9561d37885",
+      "is_eligible": true,
+      "status": "grace",
+      "eligible_until": 1762111555,
+      "eligible_until_readable": "2025-11-02 19:25:55 UTC",
+      "eligibility_renewal_time": 1760901955
     }
   ]
 }
 ```
 
-**Key Fields:**
-- `is_eligible`: Boolean indicating if the indexer is eligible for rewards (from contract's `isEligible()`)
+**Metadata Fields:**
+- `retrieved`: Timestamp when the data was fetched
+- `total_count`: Total number of active indexers
+- `last_oracle_update_time`: Unix timestamp from contract's `getLastOracleUpdateTime()`
+- `eligibility_period`: Duration in seconds (14 days = 1209600 seconds) from contract's `getEligibilityPeriod()`
+
+**Indexer Fields:**
+- `is_eligible`: Boolean indicating if the indexer returned `true` from contract's `isEligible()`
 - `eligibility_renewal_time`: Unix timestamp of eligibility renewal (from contract's `getEligibilityRenewalTime()`)
-- **All indexers are displayed on the dashboard with status badges indicating eligibility**
+- `status`: Current eligibility status - one of three values:
+  - **"eligible"**: Renewal time matches oracle update time
+  - **"grace"**: Within grace period (renewal time + eligibility period > current time)
+  - **"ineligible"**: Grace period expired or never eligible
+- `eligible_until`: Unix timestamp when grace period expires (only set for "grace" status)
+- `eligible_until_readable`: Human-readable expiration date (only set for "grace" status)
+- **All indexers are displayed on the dashboard with status badges**
 
 ### Generated: `ens_resolution.json`
 This file is automatically generated by the script and contains cached ENS name resolutions.
@@ -299,38 +342,72 @@ Example:
 ## Dashboard Features
 
 ### Contract Information Section
-Displays before the table:
+**Collapsible debug section** (click header to expand/collapse):
 - **Sepolia Contract on Arbitrum**: Contract address with link to Arbiscan
+- **Last Oracle Update Time**: Latest oracle update timestamp from the contract
 - **Last Transaction ID**: Transaction hash with link to Arbiscan
 - **Block Number**: Block where the transaction occurred
-- **Transaction Time**: When the transaction was executed
-- **Last Oracle Update Time**: Latest oracle update timestamp from the contract
+- **Eligibility Period**: 14-day grace period duration (1209600 seconds)
+
+### Search and Filter Bar
+**Combined search and filter section** (search left-aligned, filters right-aligned):
+- **Search Box**: Real-time filtering by indexer address or ENS name
+- **Status Filter Buttons**: Click to filter by status (eligible, grace, ineligible)
+  - **Active State**: Selected filters invert colors (solid background, dark text)
+  - **Toggle Behavior**: Click again to remove filter
+  - **Reset Button**: Clears both search and status filter
+- **Combined Filtering**: Search and status filters work together
 
 ### Indexers Table
-- **All Indexers Displayed**: Shows all active indexers (both eligible and ineligible)
+- **All Indexers Displayed**: Shows all active indexers (eligible, grace period, and ineligible)
 - **Status Badges**: 
-  - **eligible** (green): Indexer is eligible for rewards
-  - **ineligible** (red): Indexer is not eligible for rewards
-- **Sortable columns**: Click any header to sort
-- **Search functionality**: Real-time filtering by address or ENS name
+  - **eligible** (green): Indexer's renewal time matches oracle update time
+  - **grace** (yellow): Indexer is in grace period - eligible until expiration date shown
+  - **ineligible** (red): Indexer's grace period has expired or never eligible
+- **Eligible Until Column**: Shows grace period expiration date in format: `2-Nov-2025 at 19:25:55 UTC`
+- **Smart Sorting**: Automatically sorted by eligibility status first (eligible → grace → ineligible), then alphabetically by ENS name
+- **Sortable columns**: Click any header to sort by that column (while maintaining eligibility priority)
 - **Statistics**: Shows total indexers and filtered count
 - **Color-coded**: ENS names highlighted, missing ENS shown in gray
 - **Clickable addresses**: Each indexer address links to their profile on The Graph Explorer
 
 ## Technical Details
 
+### Status Determination Logic
+The script uses a three-tier status system:
+
+```python
+if eligibility_renewal_time == last_oracle_update_time:
+    status = "eligible"
+elif eligibility_renewal_time != last_oracle_update_time:
+    grace_period_end = eligibility_renewal_time + eligibility_period
+    if current_time < grace_period_end:
+        status = "grace"
+        eligible_until = grace_period_end
+    else:
+        status = "ineligible"
+else:
+    status = "ineligible"
+```
+
 ### Timestamp Conversion
 All Unix timestamps are converted to UTC format:
 ```python
 datetime.fromtimestamp(timestamp_int, tz=timezone.utc)
-    .strftime("%d %b %Y at %H:%M (UTC)")
+    .strftime("%Y-%m-%d %H:%M:%S UTC")
 ```
 
-### Contract Function Call
-The script calls `getLastOracleUpdateTime()` using RPC:
+### Contract Function Calls
+The script calls multiple contract functions using RPC:
 ```python
-function_selector = '0xbe626dd2' + '0' * 56  # Padded to 32 bytes
-# eth_call to contract
+# getLastOracleUpdateTime()
+function_selector = '0xbe626dd2'
+
+# getEligibilityPeriod()
+function_selector = '0xd0a5379e'
+
+# getEligibilityRenewalTime(address)
+function_selector = '0xd353402d'
 ```
 
 ### Block Scanning

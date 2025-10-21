@@ -91,14 +91,25 @@ This system ensures that rewards are distributed only to indexers who actively s
     - **"ineligible"**: Grace period has expired or no eligibility renewal time
   - Updates `active_indexers.json` with complete eligibility data including status
 
-#### 3. **Dashboard Rendering**
+#### 3. **Status Change Tracking**
+- **`updateStatusChangeDates()`**: Detects and tracks status changes between runs
+  - **Before generating new data**: Backs up current `active_indexers.json` to `active_indexers_previous_run.json`
+  - **After eligibility check**: Compares current run with previous run
+  - **Comparison logic** (by indexer address):
+    - **Status changed** (e.g., "eligible" → "grace"): Sets `last_status_change_date` to current date (format: `21/Oct/2025`)
+    - **Status unchanged**: Keeps the previous `last_status_change_date` value (could be empty or a date)
+    - **New indexer**: Leaves `last_status_change_date` empty (no previous status to compare)
+  - **Date only appears when status actually changes** - stays empty until first change occurs
+  - Updates `active_indexers.json` with status change dates
+
+#### 4. **Dashboard Rendering**
 - **`renderIndexerTable()`**: Reads `active_indexers.json` and returns all indexers
   - Loads ENS names from `ens_resolution.json` cache
   - Merges ENS data with indexer eligibility data
   - Returns list of all indexers with ENS names to display on the dashboard
   - **Both eligible and ineligible indexers are displayed** with appropriate status badges
 
-#### 4. **Transaction Data Retrieval**
+#### 5. **Transaction Data Retrieval**
 The script tries multiple methods to fetch the last transaction data (in priority order):
 
 1. **`get_last_transaction_from_json()`**: 
@@ -112,19 +123,19 @@ The script tries multiple methods to fetch the last transaction data (in priorit
    - Falls back to Arbiscan API
    - Returns `None` if API is unavailable (no mock data used)
 
-#### 5. **Oracle Update Time**
+#### 6. **Oracle Update Time**
 - **`get_oracle_update_time()`**: 
   - Calls the contract's `getLastOracleUpdateTime()` function via RPC
   - Function selector: `0xbe626dd2`
   - Returns Unix timestamp of the last oracle update
 
-#### 6. **Eligibility Period**
+#### 7. **Eligibility Period**
 - **`get_eligibility_period()`**: 
   - Calls the contract's `getEligibilityPeriod()` function via RPC
   - Function selector: `0xd0a5379e`
   - Returns eligibility period in seconds
 
-#### 7. **HTML Generation**
+#### 8. **HTML Generation**
 - **`generate_html_dashboard()`**: 
   - Loads all indexers using `renderIndexerTable()`
   - Creates a complete, self-contained HTML file
@@ -137,17 +148,18 @@ The script tries multiple methods to fetch the last transaction data (in priorit
 
 ```
 .
-├── generate_dashboard.py    # Main script
-├── indexers.txt             # Legacy file (still read for backwards compatibility)
-├── active_indexers.json     # Active indexers with eligibility data (generated)
-├── ens_resolution.json      # ENS name cache (generated)
-├── last_transaction.json    # Cached transaction data (generated)
-├── grt.png                  # Logo image for the dashboard
-├── index.html               # Generated dashboard (output)
-├── .env                     # Environment variables (create from env.example)
-├── env.example              # Template for environment variables
-├── requirements.txt         # Python dependencies
-└── README.md                # This file
+├── generate_dashboard.py              # Main script
+├── indexers.txt                       # Legacy file (still read for backwards compatibility)
+├── active_indexers.json               # Active indexers with eligibility data (generated)
+├── active_indexers_previous_run.json  # Backup of previous run for status change tracking (generated)
+├── ens_resolution.json                # ENS name cache (generated)
+├── last_transaction.json              # Cached transaction data (generated)
+├── grt.png                            # Logo image for the dashboard
+├── index.html                         # Generated dashboard (output)
+├── .env                               # Environment variables (create from env.example)
+├── env.example                        # Template for environment variables
+├── requirements.txt                   # Python dependencies
+└── README.md                          # This file
 ```
 
 ## Usage
@@ -191,23 +203,28 @@ python3 generate_dashboard.py
 ```
 
 This will:
-1. **Retrieve active indexers** from The Graph's network subgraph (with self stake > 0)
-2. **Fetch contract metadata**:
+1. **Backup previous run**: Copy `active_indexers.json` to `active_indexers_previous_run.json` (if it exists)
+2. **Retrieve active indexers** from The Graph's network subgraph (with self stake > 0)
+3. **Fetch contract metadata**:
    - Call `getLastOracleUpdateTime()` to get the latest oracle update timestamp
    - Call `getEligibilityPeriod()` to get the grace period duration (14 days)
-3. **Resolve ENS names**:
+4. **Resolve ENS names**:
    - If `USE_CACHED_ENS=Y`: Load ENS names from `ens_resolution.json` cache
    - If `USE_CACHED_ENS=N`: Query ENS subgraph and update `ens_resolution.json` cache
-4. **Check eligibility** (Three-Pass Approach):
+5. **Check eligibility** (Three-Pass Approach):
    - **Pass 1**: Call contract's `isEligible()` function for all indexers
    - **Pass 2**: Call `getEligibilityRenewalTime()` for eligible indexers
    - **Pass 3**: Determine status based on renewal time comparison and grace period:
      - Set status to "eligible", "grace", or "ineligible"
      - Calculate `eligible_until` for grace period indexers
-5. Save complete indexer data to `active_indexers.json` (without ENS names)
-6. **Render dashboard** showing all indexers with status badges (eligible/grace/ineligible) merged with ENS names from cache
-7. Fetch the latest transaction data
-8. Generate `index.html` with sorted table and interactive features
+6. **Track status changes**: Compare with previous run to detect status changes
+   - If status changed: Set `last_status_change_date` to current date
+   - If status unchanged: Keep previous date (or empty if no previous change)
+   - If new indexer: Leave date empty
+7. Save complete indexer data to `active_indexers.json` (without ENS names)
+8. **Render dashboard** showing all indexers with status badges (eligible/grace/ineligible) merged with ENS names from cache
+9. Fetch the latest transaction data
+10. Generate `index.html` with sorted table and interactive features
 
 ### Opening the Dashboard
 
@@ -271,7 +288,8 @@ Structure:
       "status": "eligible",
       "eligible_until": "",
       "eligible_until_readable": "",
-      "eligibility_renewal_time": 1760956267
+      "eligibility_renewal_time": 1760956267,
+      "last_status_change_date": ""
     },
     {
       "address": "0x51637a35f7f054c98ed51904de939b9561d37885",
@@ -279,7 +297,8 @@ Structure:
       "status": "grace",
       "eligible_until": 1762111555,
       "eligible_until_readable": "2025-11-02 19:25:55 UTC",
-      "eligibility_renewal_time": 1760901955
+      "eligibility_renewal_time": 1760901955,
+      "last_status_change_date": "21/Oct/2025"
     }
   ]
 }
@@ -300,6 +319,10 @@ Structure:
   - **"ineligible"**: Grace period expired or never eligible
 - `eligible_until`: Unix timestamp when grace period expires (only set for "grace" status)
 - `eligible_until_readable`: Human-readable expiration date (only set for "grace" status)
+- `last_status_change_date`: Date when the status last changed (format: `21/Oct/2025`)
+  - **Empty string** (`""`) if status has never changed or for new indexers
+  - **Date string** (e.g., `"21/Oct/2025"`) if status changed compared to previous run
+  - Tracks status transitions between any states (eligible ↔ grace ↔ ineligible)
 - **All indexers are displayed on the dashboard with status badges**
 
 ### Generated: `ens_resolution.json`
@@ -338,6 +361,28 @@ Example:
   "readable_time": "Oct-17-2025 10:21:49"
 }
 ```
+
+### Backup: `active_indexers_previous_run.json`
+This file is automatically created as a backup of the previous run's `active_indexers.json`.
+
+**Purpose:**
+- Enables status change tracking between script runs
+- Contains the exact same structure as `active_indexers.json`
+- Automatically created/overwritten before each new run
+- Only the most recent previous run is kept (no historical archive)
+
+**Usage in Status Change Detection:**
+Each time the script runs, it:
+1. Backs up current `active_indexers.json` → `active_indexers_previous_run.json`
+2. Generates new `active_indexers.json` with fresh data
+3. Compares the new file with the backup to detect status changes
+4. Updates `last_status_change_date` in the new file based on comparison
+
+**Example Scenario:**
+- **Run 1**: Indexer X has status "eligible" → `last_status_change_date` = `""`
+- **Run 2**: Indexer X still has status "eligible" → `last_status_change_date` = `""` (no change)
+- **Run 3**: Indexer X changes to status "grace" → `last_status_change_date` = `"21/Oct/2025"` (change detected!)
+- **Run 4**: Indexer X still has status "grace" → `last_status_change_date` = `"21/Oct/2025"` (keeps previous date)
 
 ## Dashboard Features
 

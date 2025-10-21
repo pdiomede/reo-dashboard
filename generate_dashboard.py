@@ -9,6 +9,7 @@ with sortable table and search functionality.
 import os
 import json
 import requests
+import shutil
 from datetime import datetime, timezone
 from typing import List, Tuple, Optional
 from dotenv import load_dotenv
@@ -508,9 +509,19 @@ def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexe
                 "status": "",
                 "eligible_until": "",
                 "eligible_until_readable": "",
-                "eligibility_renewal_time": ""
+                "eligibility_renewal_time": "",
+                "last_status_change_date": ""
             }
             output_data["indexers"].append(indexer_data)
+        
+        # Backup the previous run's file before writing the new one
+        if os.path.exists(output_file):
+            backup_file = output_file.replace('.json', '_previous_run.json')
+            try:
+                shutil.copy(output_file, backup_file)
+                print(f"✓ Backed up previous run to {backup_file}")
+            except Exception as e:
+                print(f"⚠ Warning: Could not backup previous file: {e}")
         
         # Write to JSON file
         with open(output_file, 'w', encoding='utf-8') as f:
@@ -756,6 +767,99 @@ def checkEligibility(contract_address: str, quicknode_url: str, input_file: str 
         
     except Exception as e:
         print(f"Error in checkEligibility: {e}")
+        return False
+
+
+def updateStatusChangeDates(current_file: str = 'active_indexers.json', previous_file: str = 'active_indexers_previous_run.json') -> bool:
+    """
+    Compare the current and previous run files to detect status changes.
+    Updates the last_status_change_date field for indexers whose status has changed.
+    
+    Args:
+        current_file: Path to the current active_indexers.json file
+        previous_file: Path to the previous run's backup file
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Check if current file exists
+        if not os.path.exists(current_file):
+            print(f"⚠ {current_file} not found, skipping status change detection")
+            return False
+        
+        # Read current file
+        print(f"Reading current file: {current_file}...")
+        with open(current_file, 'r', encoding='utf-8') as f:
+            current_data = json.load(f)
+        
+        current_indexers = current_data.get("indexers", [])
+        if not current_indexers:
+            print("No indexers found in current file")
+            return False
+        
+        # Try to read previous file
+        previous_indexers_map = {}
+        if os.path.exists(previous_file):
+            print(f"Reading previous file: {previous_file}...")
+            with open(previous_file, 'r', encoding='utf-8') as f:
+                previous_data = json.load(f)
+            
+            previous_indexers = previous_data.get("indexers", [])
+            # Create a map of address -> indexer data for quick lookup
+            previous_indexers_map = {
+                indexer.get("address", "").lower(): indexer 
+                for indexer in previous_indexers
+            }
+            print(f"✓ Loaded {len(previous_indexers_map)} indexers from previous run")
+        else:
+            print(f"⚠ {previous_file} not found, treating all as new indexers")
+        
+        # Get current date in format like "21/Oct/2025"
+        current_date = datetime.now(timezone.utc).strftime("%-d/%b/%Y")
+        
+        # Track changes
+        status_changed_count = 0
+        status_unchanged_count = 0
+        new_indexers_count = 0
+        
+        # Compare each indexer
+        for indexer in current_indexers:
+            address = indexer.get("address", "").lower()
+            current_status = indexer.get("status", "")
+            
+            if address in previous_indexers_map:
+                # Indexer existed in previous run
+                previous_indexer = previous_indexers_map[address]
+                previous_status = previous_indexer.get("status", "")
+                previous_date = previous_indexer.get("last_status_change_date", "")
+                
+                if current_status != previous_status:
+                    # Status changed - update with current date
+                    indexer["last_status_change_date"] = current_date
+                    status_changed_count += 1
+                else:
+                    # Status unchanged - keep previous date (could be empty or a date)
+                    indexer["last_status_change_date"] = previous_date
+                    status_unchanged_count += 1
+            else:
+                # New indexer not in previous run - leave empty (no previous status to compare)
+                indexer["last_status_change_date"] = ""
+                new_indexers_count += 1
+        
+        # Write updated data back to current file
+        with open(current_file, 'w', encoding='utf-8') as f:
+            json.dump(current_data, f, indent=2)
+        
+        print(f"✓ Status change detection complete:")
+        print(f"  - Status changed: {status_changed_count}")
+        print(f"  - Status unchanged: {status_unchanged_count}")
+        print(f"  - New indexers: {new_indexers_count}")
+        print(f"✓ Updated {current_file} with status change dates")
+        return True
+        
+    except Exception as e:
+        print(f"Error in updateStatusChangeDates: {e}")
         return False
 
 
@@ -1830,7 +1934,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     html_content += f"""    
     <div class="footer">
         <div class="footer-line">
-            This dashboard is based on the GIP-0079: Indexer Rewards Eligibility Oracle. More info can be found <a href="https://forum.thegraph.com/t/gip-0079-indexer-rewards-eligibility-oracle/6734" target="_blank">here</a>
+            This dashboard is based on the GIP-0079: Indexer Rewards Eligibility Oracle. More info can be <a href="https://forum.thegraph.com/t/gip-0079-indexer-rewards-eligibility-oracle/6734" target="_blank">found here</a>
         </div>
         <div class="footer-content">
             <span class="version">v{VERSION}</span>
@@ -2007,6 +2111,10 @@ def main():
     
     # Check eligibility for each indexer by calling the contract
     checkEligibility(contract_address, quicknode_url)
+    print()
+    
+    # Update status change dates by comparing with previous run
+    updateStatusChangeDates()
     print()
     
     html_content = generate_html_dashboard(indexers, contract_address=contract_address, api_key=api_key, quicknode_url=quicknode_url)

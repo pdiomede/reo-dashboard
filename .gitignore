@@ -40,3 +40,4 @@ logs/
 
 # Generated indexer data
 active_indexers.json
+active_indexers_previous_run.json

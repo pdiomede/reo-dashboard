@@ -1578,12 +1578,13 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 <tbody id="tableBody">
 """
 
-    # Sort indexers: first by eligibility (eligible first), then by ENS name
+    # Sort indexers: first by status (eligible, grace, ineligible), then by ENS name
     def sort_key(indexer):
-        is_eligible = indexer.get("is_eligible", False)
+        status = indexer.get("status", "ineligible")
         ens_name = indexer.get("ens_name", "")
-        # Eligible first (True < False becomes False, True for reverse), then by ENS (empty ENS last)
-        return (not is_eligible, ens_name.lower() if ens_name else "zzzzzzzzz")
+        # Status order: eligible (0), grace (1), ineligible (2), then by ENS (empty ENS last)
+        status_priority = {"eligible": 0, "grace": 1, "ineligible": 2}
+        return (status_priority.get(status, 3), ens_name.lower() if ens_name else "zzzzzzzzz")
     
     all_indexers_sorted = sorted(all_indexers, key=sort_key)
 
@@ -1625,12 +1626,13 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         const originalData = [
 """
 
-    # Sort indexers: first by eligibility (eligible first), then by ENS name
+    # Sort indexers: first by status (eligible, grace, ineligible), then by ENS name
     def sort_key(indexer):
-        is_eligible = indexer.get("is_eligible", False)
+        status = indexer.get("status", "ineligible")
         ens_name = indexer.get("ens_name", "")
-        # Eligible first (True < False becomes False, True for reverse), then by ENS (empty ENS last)
-        return (not is_eligible, ens_name.lower() if ens_name else "zzzzzzzzz")
+        # Status order: eligible (0), grace (1), ineligible (2), then by ENS (empty ENS last)
+        status_priority = {"eligible": 0, "grace": 1, "ineligible": 2}
+        return (status_priority.get(status, 3), ens_name.lower() if ens_name else "zzzzzzzzz")
     
     all_indexers_sorted = sorted(all_indexers, key=sort_key)
 
@@ -1723,16 +1725,24 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             }
             
             currentData.sort((a, b) => {
-                // First, always sort by eligibility (status column is now index 2)
-                const aStatus = a[2].includes('eligible') && !a[2].includes('ineligible') ? 1 : 0;
-                const bStatus = b[2].includes('eligible') && !b[2].includes('ineligible') ? 1 : 0;
+                // First, always sort by status priority (status column is index 2)
+                // Status order: eligible (0), grace (1), ineligible (2)
+                const getStatusPriority = (statusHtml) => {
+                    if (statusHtml.includes('eligible') && !statusHtml.includes('ineligible')) return 0;
+                    if (statusHtml.includes('grace')) return 1;
+                    if (statusHtml.includes('ineligible')) return 2;
+                    return 3;
+                };
                 
-                // If eligibility differs, sort eligible first
-                if (aStatus !== bStatus) {
-                    return bStatus - aStatus; // Higher status (eligible) first
+                const aStatusPriority = getStatusPriority(a[2]);
+                const bStatusPriority = getStatusPriority(b[2]);
+                
+                // If status priority differs, sort by priority
+                if (aStatusPriority !== bStatusPriority) {
+                    return aStatusPriority - bStatusPriority;
                 }
                 
-                // Within same eligibility group, sort by the selected column
+                // Within same status group, sort by the selected column
                 let aVal = a[column];
                 let bVal = b[column];
                 

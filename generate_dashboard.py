@@ -1937,7 +1937,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     html_content += f"""    
     <div class="footer">
         <div class="footer-line">
-            This dashboard is based on the GIP-0079: Indexer Rewards Eligibility Oracle. More info can be <a href="https://forum.thegraph.com/t/gip-0079-indexer-rewards-eligibility-oracle/6734" target="_blank">found here</a>
+            This dashboard is based on the <a href="https://forum.thegraph.com/t/gip-0079-indexer-rewards-eligibility-oracle/6734" target="_blank">GIP-0079: Indexer Rewards Eligibility Oracle</a>
         </div>
         <div class="footer-line">
             <span class="version">v{VERSION}</span>

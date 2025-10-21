@@ -1048,16 +1048,16 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             background: #0C0A1D;
             color: #F8F6FF;
             padding: 30px;
-            text-align: center;
             border-bottom: 1px solid #9CA3AF;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }}
         
         .title-container {{
             display: flex;
             align-items: center;
-            justify-content: center;
             gap: 15px;
-            margin-bottom: 10px;
         }}
         
         .header-icon {{
@@ -1067,7 +1067,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         }}
         
         .header h1 {{
-            font-size: 2.5em;
+            font-size: 2.2em;
             margin: 0;
             font-weight: 300;
         }}
@@ -1076,6 +1076,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             font-size: 0.95em;
             opacity: 0.9;
             font-weight: 300;
+            white-space: nowrap;
         }}
         
         .search-container {{
@@ -1590,10 +1591,12 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             
             .header {{
                 padding: 20px;
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
             }}
             
             .title-container {{
-                flex-direction: column;
                 gap: 10px;
             }}
             
@@ -1603,7 +1606,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             }}
             
             .header h1 {{
-                font-size: 2em;
+                font-size: 1.8em;
             }}
             
             .search-container, .table-container {{

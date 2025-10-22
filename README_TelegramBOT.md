@@ -163,7 +163,7 @@ Add this line at the end of the file (replace with your actual token from Step 1
 
 ```bash
 # Telegram Bot Configuration
-TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz-1234567890
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
 ```
 
 ### 3.3 Save and Exit

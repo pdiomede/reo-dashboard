@@ -17,5 +17,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed status column sorting functionality - status column can now be sorted in both ascending and descending order
 - Status column now properly sorts by status value (eligible, grace, ineligible) alphabetically
 - Other columns maintain status priority grouping while sorting within those groups
-- Improved ENS name column sorting - indexers without ENS names are now placed at the end when sorting in ascending order
+- Improved ENS name column sorting - only rows with ENS names are sorted, rows without ENS maintain their original order and are placed at the end (ascending) or beginning (descending)
 

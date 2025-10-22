@@ -2038,6 +2038,45 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 sortDirection = 'asc';
             }
             
+            // Special handling when sorting by ENS name column (index 1)
+            if (column === 1) {
+                // Separate rows with ENS from rows without ENS
+                const withENS = [];
+                const withoutENS = [];
+                
+                currentData.forEach(row => {
+                    const ens = row[1].toLowerCase();
+                    if (ens === '' || ens === 'no ens') {
+                        withoutENS.push(row);
+                    } else {
+                        withENS.push(row);
+                    }
+                });
+                
+                // Sort only the rows with ENS
+                withENS.sort((a, b) => {
+                    const aENS = a[1].toLowerCase();
+                    const bENS = b[1].toLowerCase();
+                    
+                    if (aENS < bENS) return sortDirection === 'asc' ? -1 : 1;
+                    if (aENS > bENS) return sortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                });
+                
+                // Combine: sorted ENS rows + unsorted no-ENS rows at the end
+                if (sortDirection === 'asc') {
+                    currentData = [...withENS, ...withoutENS];
+                } else {
+                    // In descending order, put no-ENS at beginning
+                    currentData = [...withoutENS, ...withENS];
+                }
+                
+                renderTable();
+                updateSortHeaders();
+                return;
+            }
+            
+            // For all other columns, use regular sort
             currentData.sort((a, b) => {
                 // Special handling when sorting by status column (index 2)
                 if (column === 2) {
@@ -2047,23 +2086,6 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                     
                     if (aStatus < bStatus) return sortDirection === 'asc' ? -1 : 1;
                     if (aStatus > bStatus) return sortDirection === 'asc' ? 1 : -1;
-                    return 0;
-                }
-                
-                // Special handling when sorting by ENS name column (index 1)
-                if (column === 1) {
-                    const aENS = a[1].toLowerCase();
-                    const bENS = b[1].toLowerCase();
-                    const aEmpty = aENS === '' || aENS === 'no ens';
-                    const bEmpty = bENS === '' || bENS === 'no ens';
-                    
-                    // If one has ENS and other doesn't, sort empty to end in asc, beginning in desc
-                    if (aEmpty && !bEmpty) return sortDirection === 'asc' ? 1 : -1;
-                    if (!aEmpty && bEmpty) return sortDirection === 'asc' ? -1 : 1;
-                    
-                    // Both have ENS or both don't have ENS - sort normally
-                    if (aENS < bENS) return sortDirection === 'asc' ? -1 : 1;
-                    if (aENS > bENS) return sortDirection === 'asc' ? 1 : -1;
                     return 0;
                 }
                 
@@ -2087,18 +2109,6 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 // Within same status group, sort by the selected column
                 let aVal = a[column];
                 let bVal = b[column];
-                
-                // Special handling for ENS column within status groups
-                if (column === 1) {
-                    const aENSLower = aVal.toLowerCase();
-                    const bENSLower = bVal.toLowerCase();
-                    const aEmpty = aENSLower === '' || aENSLower === 'no ens';
-                    const bEmpty = bENSLower === '' || bENSLower === 'no ens';
-                    
-                    // Sort empty ENS to end
-                    if (aEmpty && !bEmpty) return 1;
-                    if (!aEmpty && bEmpty) return -1;
-                }
                 
                 // All columns are now text, so convert to lowercase for comparison
                 aVal = aVal.toLowerCase();

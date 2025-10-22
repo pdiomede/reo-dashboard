@@ -15,7 +15,7 @@ from typing import List, Tuple, Optional
 from dotenv import load_dotenv
 
 # Version of the dashboard generator
-VERSION = "0.0.6"
+VERSION = "0.0.7"
 
 
 def get_last_transaction_from_json(json_file: str = 'last_transaction.json') -> Optional[dict]:
@@ -860,6 +860,111 @@ def updateStatusChangeDates(current_file: str = 'active_indexers.json', previous
         
     except Exception as e:
         print(f"Error in updateStatusChangeDates: {e}")
+        return False
+
+
+def logStatusChanges(current_file: str = 'active_indexers.json', previous_file: str = 'active_indexers_previous_run.json', log_file: str = 'activity_log_indexers_status_changes.json') -> bool:
+    """
+    Track and log status changes for indexers in an activity log file.
+    Updates metadata on each run and appends status change entries.
+    
+    Args:
+        current_file: Path to the current active_indexers.json file
+        previous_file: Path to the previous run's backup file
+        log_file: Path to the activity log file
+        
+    Returns:
+        True if successful, False otherwise
+    """
+    try:
+        # Check if current file exists
+        if not os.path.exists(current_file):
+            print(f"⚠ {current_file} not found, skipping status change logging")
+            return False
+        
+        # Read current file
+        with open(current_file, 'r', encoding='utf-8') as f:
+            current_data = json.load(f)
+        
+        current_indexers = current_data.get("indexers", [])
+        current_metadata = current_data.get("metadata", {})
+        
+        if not current_indexers:
+            print("No indexers found in current file")
+            return False
+        
+        # Try to read previous file
+        previous_indexers_map = {}
+        if os.path.exists(previous_file):
+            with open(previous_file, 'r', encoding='utf-8') as f:
+                previous_data = json.load(f)
+            
+            previous_indexers = previous_data.get("indexers", [])
+            # Create a map of address -> status for quick lookup
+            previous_indexers_map = {
+                indexer.get("address", "").lower(): indexer.get("status", "")
+                for indexer in previous_indexers
+            }
+        
+        # Load existing activity log or create new one
+        activity_log = {"metadata": {}, "status_changes": []}
+        if os.path.exists(log_file):
+            try:
+                with open(log_file, 'r', encoding='utf-8') as f:
+                    activity_log = json.load(f)
+                    # Ensure status_changes list exists
+                    if "status_changes" not in activity_log:
+                        activity_log["status_changes"] = []
+            except Exception as e:
+                print(f"⚠ Error reading existing log file, creating new one: {e}")
+                activity_log = {"metadata": {}, "status_changes": []}
+        
+        # Update metadata section (always overwrite)
+        current_check = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+        last_oracle_update_time = current_metadata.get("last_oracle_update_time")
+        
+        activity_log["metadata"] = {
+            "last_check": current_check,
+            "last_oracle_update_time": last_oracle_update_time
+        }
+        
+        # Get current date for status changes
+        current_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        
+        # Track status changes
+        changes_count = 0
+        
+        for indexer in current_indexers:
+            address = indexer.get("address", "").lower()
+            current_status = indexer.get("status", "")
+            
+            if address in previous_indexers_map:
+                previous_status = previous_indexers_map[address]
+                
+                if current_status != previous_status and previous_status and current_status:
+                    # Status changed - append to log
+                    change_entry = {
+                        "address": indexer.get("address", ""),  # Keep original case
+                        "previous_status": previous_status,
+                        "new_status": current_status,
+                        "date_status_change": current_date
+                    }
+                    activity_log["status_changes"].append(change_entry)
+                    changes_count += 1
+        
+        # Write updated activity log back to file
+        with open(log_file, 'w', encoding='utf-8') as f:
+            json.dump(activity_log, f, indent=2)
+        
+        print(f"✓ Activity log updated:")
+        print(f"  - Last check: {current_check}")
+        print(f"  - Status changes detected: {changes_count}")
+        print(f"  - Total entries in log: {len(activity_log['status_changes'])}")
+        print(f"✓ Activity log saved to {log_file}")
+        return True
+        
+    except Exception as e:
+        print(f"Error in logStatusChanges: {e}")
         return False
 
 
@@ -2123,6 +2228,10 @@ def main():
     
     # Update status change dates by comparing with previous run
     updateStatusChangeDates()
+    print()
+    
+    # Log status changes to activity log
+    logStatusChanges()
     print()
     
     html_content = generate_html_dashboard(indexers, contract_address=contract_address, api_key=api_key, quicknode_url=quicknode_url)

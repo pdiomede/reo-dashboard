@@ -1,0 +1,27 @@
+{
+  "metadata": {
+    "last_check": "2025-10-21 11:14:06 UTC",
+    "last_oracle_update_time": 1761040822
+  },
+  "status_changes": [
+    {
+      "address": "0x0874e792462406dc12ee96b75e52a3bdbba3a123",
+      "previous_status": "grace",
+      "new_status": "eligible",
+      "date_status_change": "2025-10-21"
+    },
+    {
+      "address": "0x1234567890abcdef1234567890abcdef12345678",
+      "previous_status": "eligible",
+      "new_status": "grace",
+      "date_status_change": "2025-10-22"
+    },
+    {
+      "address": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcd",
+      "previous_status": "grace",
+      "new_status": "ineligible",
+      "date_status_change": "2025-10-23"
+    }
+  ]
+}
+

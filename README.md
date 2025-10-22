@@ -102,6 +102,19 @@ This system ensures that rewards are distributed only to indexers who actively s
   - **Date only appears when status actually changes** - stays empty until first change occurs
   - Updates `active_indexers.json` with status change dates
 
+#### 3b. **Activity Log for Status Changes**
+- **`logStatusChanges()`**: Maintains a cumulative activity log of all status changes
+  - Creates/updates `activity_log_indexers_status_changes.json`
+  - **Metadata section** (overwritten each run):
+    - `last_check`: Timestamp when script last ran
+    - `last_oracle_update_time`: Latest oracle update from contract
+  - **Status changes section** (appended):
+    - Logs each status transition with: address, previous_status, new_status, date_status_change
+    - Only logs actual status changes (not new indexers or unchanged statuses)
+    - Preserves complete historical record of all transitions
+  - Runs after `updateStatusChangeDates()` to capture all changes
+  - Provides audit trail for monitoring indexer status evolution over time
+
 #### 4. **Dashboard Rendering**
 - **`renderIndexerTable()`**: Reads `active_indexers.json` and returns all indexers
   - Loads ENS names from `ens_resolution.json` cache
@@ -148,18 +161,20 @@ The script tries multiple methods to fetch the last transaction data (in priorit
 
 ```
 .
-├── generate_dashboard.py              # Main script
-├── indexers.txt                       # Legacy file (still read for backwards compatibility)
-├── active_indexers.json               # Active indexers with eligibility data (generated)
-├── active_indexers_previous_run.json  # Backup of previous run for status change tracking (generated)
-├── ens_resolution.json                # ENS name cache (generated)
-├── last_transaction.json              # Cached transaction data (generated)
-├── grt.png                            # Logo image for the dashboard
-├── index.html                         # Generated dashboard (output)
-├── .env                               # Environment variables (create from env.example)
-├── env.example                        # Template for environment variables
-├── requirements.txt                   # Python dependencies
-└── README.md                          # This file
+├── generate_dashboard.py                          # Main script
+├── indexers.txt                                   # Legacy file (still read for backwards compatibility)
+├── active_indexers.json                           # Active indexers with eligibility data (generated)
+├── active_indexers_previous_run.json              # Backup of previous run for status change tracking (generated)
+├── activity_log_indexers_status_changes.json      # Activity log tracking all status changes (generated)
+├── activity_log_indexers_status_changes.json.example  # Example format for activity log
+├── ens_resolution.json                            # ENS name cache (generated)
+├── last_transaction.json                          # Cached transaction data (generated)
+├── grt.png                                        # Logo image for the dashboard
+├── index.html                                     # Generated dashboard (output)
+├── .env                                           # Environment variables (create from env.example)
+├── env.example                                    # Template for environment variables
+├── requirements.txt                               # Python dependencies
+└── README.md                                      # This file
 ```
 
 ## Usage
@@ -221,10 +236,13 @@ This will:
    - If status changed: Set `last_status_change_date` to current date
    - If status unchanged: Keep previous date (or empty if no previous change)
    - If new indexer: Leave date empty
-7. Save complete indexer data to `active_indexers.json` (without ENS names)
-8. **Render dashboard** showing all indexers with status badges (eligible/grace/ineligible) merged with ENS names from cache
-9. Fetch the latest transaction data
-10. Generate `index.html` with sorted table and interactive features
+7. **Log status changes to activity log**: Append status transitions to cumulative log
+   - Update metadata (last_check, last_oracle_update_time)
+   - Append new status change entries to historical record
+8. Save complete indexer data to `active_indexers.json` (without ENS names)
+9. **Render dashboard** showing all indexers with status badges (eligible/grace/ineligible) merged with ENS names from cache
+10. Fetch the latest transaction data
+11. Generate `index.html` with sorted table and interactive features
 
 ### Opening the Dashboard
 
@@ -383,6 +401,65 @@ Each time the script runs, it:
 - **Run 2**: Indexer X still has status "eligible" → `last_status_change_date` = `""` (no change)
 - **Run 3**: Indexer X changes to status "grace" → `last_status_change_date` = `"21/Oct/2025"` (change detected!)
 - **Run 4**: Indexer X still has status "grace" → `last_status_change_date` = `"21/Oct/2025"` (keeps previous date)
+
+### Activity Log: `activity_log_indexers_status_changes.json`
+This file maintains a cumulative historical record of all indexer status changes.
+
+**Purpose:**
+- Creates an audit trail of status transitions over time
+- Preserves complete history of all status changes (not just the most recent)
+- Enables analysis of indexer behavior patterns
+- Provides accountability and transparency for status evolution
+
+**Structure:**
+```json
+{
+  "metadata": {
+    "last_check": "2025-10-21 11:14:06 UTC",
+    "last_oracle_update_time": 1761040822
+  },
+  "status_changes": [
+    {
+      "address": "0x0874e792462406dc12ee96b75e52a3bdbba3a123",
+      "previous_status": "grace",
+      "new_status": "eligible",
+      "date_status_change": "2025-10-21"
+    },
+    {
+      "address": "0x1234567890abcdef1234567890abcdef12345678",
+      "previous_status": "eligible",
+      "new_status": "grace",
+      "date_status_change": "2025-10-22"
+    }
+  ]
+}
+```
+
+**How It Works:**
+Each time the script runs, it:
+1. **Updates metadata** (overwrites):
+   - `last_check`: Current timestamp when script ran
+   - `last_oracle_update_time`: Latest oracle update from contract
+2. **Appends status changes**:
+   - Detects any indexer status transitions
+   - Adds new entries with address, previous_status, new_status, and date
+   - Never removes or modifies existing entries
+3. **Preserves history**:
+   - File grows over time as status changes accumulate
+   - Complete historical record of all transitions
+   - Can track patterns (e.g., indexer cycling between statuses)
+
+**Key Fields:**
+- `address`: Indexer Ethereum address
+- `previous_status`: Status before the change (eligible/grace/ineligible)
+- `new_status`: Status after the change (eligible/grace/ineligible)
+- `date_status_change`: Date when the change was detected (YYYY-MM-DD format)
+
+**Example Usage:**
+- Monitor which indexers frequently lose eligibility
+- Track grace period usage patterns
+- Identify indexers that maintain consistent eligible status
+- Generate reports on overall network eligibility trends
 
 ## Dashboard Features
 

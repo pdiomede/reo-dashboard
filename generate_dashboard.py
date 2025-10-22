@@ -2039,17 +2039,28 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             }
             
             currentData.sort((a, b) => {
-                // First, always sort by status priority (status column is index 2)
+                // Special handling when sorting by status column (index 2)
+                if (column === 2) {
+                    // Use the plain text status (row[4]) for sorting
+                    const aStatus = a[4].toLowerCase();
+                    const bStatus = b[4].toLowerCase();
+                    
+                    if (aStatus < bStatus) return sortDirection === 'asc' ? -1 : 1;
+                    if (aStatus > bStatus) return sortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                }
+                
+                // For other columns, always maintain status priority first
                 // Status order: eligible (0), grace (1), ineligible (2)
-                const getStatusPriority = (statusHtml) => {
-                    if (statusHtml.includes('eligible') && !statusHtml.includes('ineligible')) return 0;
-                    if (statusHtml.includes('grace')) return 1;
-                    if (statusHtml.includes('ineligible')) return 2;
+                const getStatusPriority = (statusString) => {
+                    if (statusString === 'eligible') return 0;
+                    if (statusString === 'grace') return 1;
+                    if (statusString === 'ineligible') return 2;
                     return 3;
                 };
                 
-                const aStatusPriority = getStatusPriority(a[2]);
-                const bStatusPriority = getStatusPriority(b[2]);
+                const aStatusPriority = getStatusPriority(a[4]);
+                const bStatusPriority = getStatusPriority(b[4]);
                 
                 // If status priority differs, sort by priority
                 if (aStatusPriority !== bStatusPriority) {

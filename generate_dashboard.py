@@ -1737,8 +1737,10 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         }}
         
         .bell-icon {{
-            color: #F8F6FF;
-            font-size: 16px;
+            fill: #F8F6FF;
+            width: 16px;
+            height: 16px;
+            vertical-align: middle;
             margin-right: 5px;
         }}
         
@@ -2126,7 +2128,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         <div class="footer-content">
             <div class="footer-top">
                 <div class="footer-left">
-                    <span class="bell-icon">🔔</span><a href="https://t.me/reo_dashboard_bot" target="_blank">Subscribe to real-time notifications on Telegram</a>
+                    <svg class="bell-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg><a href="https://t.me/reo_dashboard_bot" target="_blank">Subscribe to real-time notifications on Telegram</a>
                 </div>
                 <div class="footer-right">
                     <span class="version">v{VERSION}</span>

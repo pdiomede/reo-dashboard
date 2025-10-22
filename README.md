@@ -187,6 +187,243 @@ The script tries multiple methods to fetch the last transaction data (in priorit
   - **Displays all indexers** with status badges (eligible/ineligible) in the main table
   - Formats timestamps to human-readable dates
 
+#### 9. **Telegram Notifications** (Optional)
+- **`telegram_bot.py`**: 
+  - Telegram bot that runs 24/7 to handle user subscriptions
+  - Manages subscriber database in `subscribers.json`
+  - Provides commands: `/start`, `/subscribe`, `/unsubscribe`, `/status`, `/stats`, `/help`, `/test`
+- **`telegram_notifier.py`**: 
+  - Called by `generate_dashboard.py` after status changes are logged
+  - Reads subscriber list and activity log
+  - Sends formatted notifications about oracle updates and status changes
+  - Handles rate limiting and error recovery
+
+## Telegram Notifications 🔔
+
+The dashboard now supports **real-time Telegram notifications** for oracle updates and indexer status changes. Users can subscribe to a Telegram bot to receive alerts.
+
+### Features
+
+- 📢 **Oracle Update Alerts**: Notification when the oracle runs and updates eligibility
+- 📝 **Status Change Reports**: Detailed breakdown of indexers that changed status
+- ⚠️ **Grace Period Monitoring**: Alerts when indexers enter/exit grace period
+- ❌ **Ineligibility Notifications**: Track when indexers become ineligible
+- 📊 **Summary Statistics**: Total counts of eligible, grace, and ineligible indexers
+- 👥 **Self-Service Subscription**: Users can subscribe/unsubscribe anytime via bot commands
+
+### Notification Examples
+
+**Oracle Update Message:**
+```
+🔔 Oracle Update Detected!
+━━━━━━━━━━━━━━━━━━━
+Update Time: 22 Oct 2025 at 14:30 (UTC)
+Oracle Timestamp: 1761040822
+
+📊 Dashboard Stats:
+• Total Indexers: 99
+• Eligible: 60 ✅
+• Grace Period: 2 ⚠️
+• Ineligible: 37 ❌
+
+📝 Status Changes Detected:
+• 3 indexer(s) → eligible ✅
+• 2 indexer(s) → grace period ⚠️
+• 1 indexer(s) → ineligible ❌
+
+🔍 View Full Dashboard
+```
+
+**Detailed Status Changes:**
+```
+📝 Detailed Status Changes
+━━━━━━━━━━━━━━━━━━━
+
+✅ Became Eligible (3):
+• 0x1234...5678 (grace → eligible)
+• 0xabcd...ef01 (ineligible → eligible)
+• 0x9876...5432 (grace → eligible)
+
+⚠️ Entered Grace Period (2):
+• 0x5555...6666 (eligible → grace)
+  Expires: 5-Nov-2025 at 19:25:55 UTC
+• 0x7777...8888 (eligible → grace)
+
+📄 Full Report
+```
+
+### Setup Telegram Bot
+
+#### Step 1: Create Your Bot
+
+1. Open Telegram and search for `@BotFather`
+2. Send `/newbot` command
+3. Choose a name (e.g., "REO Dashboard Alerts")
+4. Choose a username (must end in 'bot', e.g., "reo_dashboard_bot")
+5. BotFather will give you a **BOT TOKEN** (looks like: `123456789:ABCdef...`)
+6. Save this token securely
+
+#### Step 2: Configure Environment
+
+Add the bot token to your `.env` file:
+
+```bash
+# Telegram Bot Configuration (optional)
+TELEGRAM_BOT_TOKEN=your_bot_token_here
+```
+
+#### Step 3: Install Dependencies
+
+```bash
+pip3 install python-telegram-bot==20.7
+```
+
+Or use the requirements file:
+```bash
+pip3 install -r requirements.txt
+```
+
+#### Step 4: Run the Bot
+
+The bot needs to run continuously to accept user subscriptions. Choose one method:
+
+**Option A: Using screen (Recommended for simplicity)**
+```bash
+cd /home/graph/ftpbox/reo
+screen -S telegram_bot
+python3 telegram_bot.py
+# Press Ctrl+A then D to detach
+```
+
+To manage the screen session:
+```bash
+# List running screens
+screen -ls
+
+# Reattach to view logs
+screen -r telegram_bot
+
+# Kill the bot
+screen -X -S telegram_bot quit
+```
+
+**Option B: Using systemd (Recommended for production)**
+```bash
+# Copy service file
+sudo cp telegram_bot_service.service /etc/systemd/system/telegram_bot.service
+
+# Enable and start
+sudo systemctl daemon-reload
+sudo systemctl enable telegram_bot.service
+sudo systemctl start telegram_bot.service
+
+# Check status
+sudo systemctl status telegram_bot.service
+
+# View logs
+sudo journalctl -u telegram_bot.service -f
+
+# Restart if needed
+sudo systemctl restart telegram_bot.service
+```
+
+**Option C: Using nohup (Simple background process)**
+```bash
+cd /home/graph/ftpbox/reo
+nohup python3 telegram_bot.py > telegram_bot.log 2>&1 &
+
+# Check if running
+ps aux | grep telegram_bot.py
+
+# View logs
+tail -f telegram_bot.log
+
+# Kill if needed
+pkill -f telegram_bot.py
+```
+
+#### Step 5: Schedule Dashboard Script
+
+Set up a cron job to run the dashboard script periodically:
+
+```bash
+crontab -e
+```
+
+Add one of these lines:
+```bash
+# Run every hour
+0 * * * * cd /home/graph/ftpbox/reo && /usr/bin/python3 generate_dashboard.py >> /home/graph/ftpbox/reo/cron.log 2>&1
+
+# Run every 30 minutes
+*/30 * * * * cd /home/graph/ftpbox/reo && /usr/bin/python3 generate_dashboard.py >> /home/graph/ftpbox/reo/cron.log 2>&1
+```
+
+View cron logs:
+```bash
+tail -f /home/graph/ftpbox/reo/cron.log
+```
+
+### Bot Commands
+
+Users can interact with the bot using these commands:
+
+| Command | Description |
+|---------|-------------|
+| `/start` | Welcome message with bot introduction |
+| `/subscribe` | Subscribe to receive notifications |
+| `/unsubscribe` | Stop receiving notifications |
+| `/status` | Check your subscription status |
+| `/stats` | View bot statistics (total subscribers, notifications sent) |
+| `/help` | Show available commands and help |
+| `/test` | Send a test notification (for subscribed users) |
+
+### How Users Subscribe
+
+1. Search for your bot on Telegram (using the username you chose)
+2. Send `/start` or `/subscribe` to the bot
+3. Receive confirmation message
+4. Start getting notifications when the dashboard script runs!
+
+### Subscriber Management
+
+The bot automatically manages subscribers in `subscribers.json`:
+
+```json
+{
+  "subscribers": [
+    {
+      "chat_id": 123456789,
+      "username": "user123",
+      "subscribed_at": "2025-10-22 14:30:00",
+      "active": true
+    }
+  ],
+  "stats": {
+    "total_subscribers": 1,
+    "total_notifications_sent": 45
+  }
+}
+```
+
+### Troubleshooting
+
+**Bot not responding:**
+- Check if bot is running: `ps aux | grep telegram_bot.py` or `screen -ls`
+- Check bot logs: `tail -f telegram_bot.log` or `sudo journalctl -u telegram_bot.service -f`
+- Verify `TELEGRAM_BOT_TOKEN` is set correctly in `.env`
+
+**Notifications not sending:**
+- Check cron is running: `crontab -l`
+- View cron logs: `tail -f cron.log`
+- Verify bot token is valid
+- Check for errors in dashboard script output
+
+**Rate limiting errors:**
+- Telegram has rate limits (30 messages/second)
+- The notifier includes small delays between messages
+- For large subscriber lists (100+), messages are automatically paced
+
 ## File Structure
 
 ```
@@ -204,7 +441,15 @@ The script tries multiple methods to fetch the last transaction data (in priorit
 ├── .env                                           # Environment variables (create from env.example)
 ├── env.example                                    # Template for environment variables
 ├── requirements.txt                               # Python dependencies
-└── README.md                                      # This file
+├── README.md                                      # This file
+│
+├── telegram_bot.py                                # Telegram bot for user subscriptions (optional)
+├── telegram_notifier.py                           # Notification sender module (optional)
+├── telegram_bot_service.service                   # Systemd service file for bot (optional)
+├── subscribers.json                               # Subscriber database (generated by bot)
+├── subscribers.json.example                       # Example subscriber structure
+├── telegram_bot.log                               # Bot logs (generated)
+└── cron.log                                       # Cron job logs (generated)
 ```
 
 ## Usage

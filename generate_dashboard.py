@@ -17,6 +17,13 @@ from dotenv import load_dotenv
 # Version of the dashboard generator
 VERSION = "0.0.7"
 
+# Import telegram notifier (will be skipped if module not available)
+try:
+    import telegram_notifier
+    TELEGRAM_AVAILABLE = True
+except ImportError:
+    TELEGRAM_AVAILABLE = False
+
 
 def get_last_transaction_from_json(json_file: str = 'last_transaction.json') -> Optional[dict]:
     """
@@ -2287,6 +2294,19 @@ def main():
     # Log status changes to activity log
     logStatusChanges()
     print()
+    
+    # Send Telegram notifications about oracle update and status changes
+    if TELEGRAM_AVAILABLE:
+        try:
+            print("Sending Telegram notifications...")
+            telegram_notifier.send_notifications()
+            print()
+        except Exception as e:
+            print(f"⚠ Warning: Could not send Telegram notifications: {e}")
+            print()
+    else:
+        print("ℹ️ Telegram notifications disabled (module not available)")
+        print()
     
     html_content = generate_html_dashboard(indexers, contract_address=contract_address, api_key=api_key, quicknode_url=quicknode_url)
     

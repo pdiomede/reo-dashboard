@@ -42,6 +42,13 @@ This project includes comprehensive documentation:
   - Subscriber activity tracking
   - Error log analysis
   - Log rotation and maintenance
+  
+- **[activity_log_indexers_status_changes.json](activity_log_indexers_status_changes.json)** - Activity Log File
+  - Cumulative history of all indexer status changes
+  - Tracks status transitions over time (eligible ↔ grace ↔ ineligible)
+  - Automatically updated by `generate_dashboard.py`
+  - Used by Telegram notifier to send status change alerts
+  - See [Activity Log section](#activity-log-activity_log_indexers_status_changesjson) for detailed structure
 
 ## Features
 

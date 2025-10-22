@@ -1770,8 +1770,16 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             </div>
             <div class="filter-wrapper">
                 <span class="filter-label">Filter by Status:</span>
-                <button class="filter-btn eligible" onclick="filterByStatus('eligible')">eligible</button>
-                <button class="filter-btn grace" onclick="filterByStatus('grace')">grace</button>
+                <button class="filter-btn eligible" onclick="filterByStatus('eligible')">eligible</button>"""
+    
+    # Add grace period tooltip if eligibility_period is available
+    grace_tooltip = ""
+    if eligibility_period:
+        days = int(eligibility_period / 86400)
+        grace_tooltip = f' title="Grace period is {days} days"'
+    
+    html_content += f"""
+                <button class="filter-btn grace" onclick="filterByStatus('grace')"{grace_tooltip}>grace</button>
                 <button class="filter-btn ineligible" onclick="filterByStatus('ineligible')">ineligible</button>
                 <button class="filter-btn reset" onclick="resetFilter()">Reset</button>
             </div>

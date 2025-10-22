@@ -33,6 +33,36 @@ This system ensures that rewards are distributed only to indexers who actively s
 - 📱 **Responsive Design**: Mobile-friendly dark theme UI with collapsible sections
 - 💾 **Offline Fallback**: Can work with cached transaction data from JSON file
 
+## Understanding Indexer Status
+
+The dashboard tracks three distinct eligibility states for indexers:
+
+### 🟢 Eligible Status
+An indexer is **eligible** when:
+- Their `eligibility_renewal_time` **matches** the contract's `last_oracle_update_time`
+- This means they met the performance criteria in the most recent oracle update
+- They will receive rewards for this period
+
+### 🟡 Grace Period Status
+An indexer enters the **grace period** when:
+- They were previously eligible (have an `eligibility_renewal_time` from a past oracle update)
+- Their `eligibility_renewal_time` **does NOT match** the current `last_oracle_update_time` (they weren't renewed in the latest update)
+- Current time is still within: `eligibility_renewal_time + eligibility_period` (typically 14 days)
+- **During grace period**: Indexers can still receive rewards and have time to improve their service quality
+- **After grace period expires**: They become ineligible
+
+**Example Grace Period Scenario:**
+1. Day 0: Indexer meets criteria, gets renewed (`eligibility_renewal_time` = Day 0)
+2. Day 7: Oracle runs again, indexer doesn't meet criteria
+3. Day 7-21: Indexer is in **grace period** (14 days from Day 0)
+4. Day 22: If still not renewed, indexer becomes **ineligible**
+
+### 🔴 Ineligible Status
+An indexer is **ineligible** when:
+- They have no `eligibility_renewal_time`, OR
+- Their grace period has expired (current time > `eligibility_renewal_time + eligibility_period`)
+- They will **not** receive rewards until they improve service quality and get renewed by the oracle
+
 ## How It Works
 
 ### Data Flow

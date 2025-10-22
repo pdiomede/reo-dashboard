@@ -2050,6 +2050,23 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                     return 0;
                 }
                 
+                // Special handling when sorting by ENS name column (index 1)
+                if (column === 1) {
+                    const aENS = a[1].toLowerCase();
+                    const bENS = b[1].toLowerCase();
+                    const aEmpty = aENS === '' || aENS === 'no ens';
+                    const bEmpty = bENS === '' || bENS === 'no ens';
+                    
+                    // If one has ENS and other doesn't, sort empty to end in asc, beginning in desc
+                    if (aEmpty && !bEmpty) return sortDirection === 'asc' ? 1 : -1;
+                    if (!aEmpty && bEmpty) return sortDirection === 'asc' ? -1 : 1;
+                    
+                    // Both have ENS or both don't have ENS - sort normally
+                    if (aENS < bENS) return sortDirection === 'asc' ? -1 : 1;
+                    if (aENS > bENS) return sortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                }
+                
                 // For other columns, always maintain status priority first
                 // Status order: eligible (0), grace (1), ineligible (2)
                 const getStatusPriority = (statusString) => {
@@ -2070,6 +2087,18 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 // Within same status group, sort by the selected column
                 let aVal = a[column];
                 let bVal = b[column];
+                
+                // Special handling for ENS column within status groups
+                if (column === 1) {
+                    const aENSLower = aVal.toLowerCase();
+                    const bENSLower = bVal.toLowerCase();
+                    const aEmpty = aENSLower === '' || aENSLower === 'no ens';
+                    const bEmpty = bENSLower === '' || bENSLower === 'no ens';
+                    
+                    // Sort empty ENS to end
+                    if (aEmpty && !bEmpty) return 1;
+                    if (!aEmpty && bEmpty) return -1;
+                }
                 
                 // All columns are now text, so convert to lowercase for comparison
                 aVal = aVal.toLowerCase();

@@ -19,13 +19,26 @@ load_dotenv()
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 SUBSCRIBERS_FILE = 'subscribers.json'
 DASHBOARD_URL = 'http://dashboards.thegraph.foundation/reo/'
+BOT_LOG_FILE = 'telegram_bot.log'
+ACTIVITY_LOG_FILE = 'telegram_bot_activity.log'
 
-# Set up logging
+# Set up logging with both console and file output
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    level=logging.INFO,
+    handlers=[
+        logging.FileHandler(BOT_LOG_FILE),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
+
+# Set up activity logger for tracking subscriber actions
+activity_logger = logging.getLogger('activity')
+activity_logger.setLevel(logging.INFO)
+activity_handler = logging.FileHandler(ACTIVITY_LOG_FILE)
+activity_handler.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+activity_logger.addHandler(activity_handler)
 
 
 def load_subscribers():
@@ -123,6 +136,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /start command."""
     chat_id = update.effective_chat.id
     username = update.effective_user.username
+    first_name = update.effective_user.first_name or "User"
+    
+    # Log the /start command
+    activity_logger.info(f"START - Chat ID: {chat_id}, Username: @{username}, Name: {first_name}")
+    logger.info(f"/start command from {chat_id} (@{username})")
     
     welcome_message = f"""
 🔔 **Welcome to REO Dashboard Notifications!**
@@ -151,8 +169,14 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /subscribe command."""
     chat_id = update.effective_chat.id
     username = update.effective_user.username
+    first_name = update.effective_user.first_name or "User"
+    last_name = update.effective_user.last_name or ""
+    full_name = f"{first_name} {last_name}".strip()
+    
+    logger.info(f"/subscribe command from {chat_id} (@{username})")
     
     if is_subscribed(chat_id):
+        activity_logger.info(f"SUBSCRIBE_ATTEMPT (Already subscribed) - Chat ID: {chat_id}, Username: @{username}, Name: {full_name}")
         await update.message.reply_text(
             "✅ You're already subscribed to notifications!\n\n"
             f"📊 View dashboard: {DASHBOARD_URL}\n"
@@ -161,6 +185,8 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     if add_subscriber(chat_id, username):
+        activity_logger.info(f"NEW_SUBSCRIBER ✅ - Chat ID: {chat_id}, Username: @{username}, Name: {full_name}")
+        logger.info(f"New subscriber: {chat_id} (@{username})")
         await update.message.reply_text(
             "🎉 **Successfully subscribed!**\n\n"
             "You will now receive notifications about:\n"
@@ -171,8 +197,9 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Use /unsubscribe anytime to stop receiving alerts.",
             parse_mode='Markdown'
         )
-        logger.info(f"New subscriber: {chat_id} (@{username})")
     else:
+        activity_logger.info(f"SUBSCRIBE_FAILED ❌ - Chat ID: {chat_id}, Username: @{username}")
+        logger.error(f"Failed to subscribe: {chat_id} (@{username})")
         await update.message.reply_text(
             "❌ Failed to subscribe. Please try again later."
         )
@@ -181,8 +208,15 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def unsubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /unsubscribe command."""
     chat_id = update.effective_chat.id
+    username = update.effective_user.username
+    first_name = update.effective_user.first_name or "User"
+    last_name = update.effective_user.last_name or ""
+    full_name = f"{first_name} {last_name}".strip()
+    
+    logger.info(f"/unsubscribe command from {chat_id} (@{username})")
     
     if not is_subscribed(chat_id):
+        activity_logger.info(f"UNSUBSCRIBE_ATTEMPT (Not subscribed) - Chat ID: {chat_id}, Username: @{username}")
         await update.message.reply_text(
             "ℹ️ You're not currently subscribed.\n\n"
             "Use /subscribe to start receiving notifications."
@@ -190,14 +224,17 @@ async def unsubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     if remove_subscriber(chat_id):
+        activity_logger.info(f"UNSUBSCRIBED 👋 - Chat ID: {chat_id}, Username: @{username}, Name: {full_name}")
+        logger.info(f"Unsubscribed: {chat_id} (@{username})")
         await update.message.reply_text(
             "👋 **Successfully unsubscribed!**\n\n"
             "You will no longer receive notifications.\n\n"
             "You can subscribe again anytime using /subscribe.",
             parse_mode='Markdown'
         )
-        logger.info(f"Unsubscribed: {chat_id}")
     else:
+        activity_logger.info(f"UNSUBSCRIBE_FAILED ❌ - Chat ID: {chat_id}, Username: @{username}")
+        logger.error(f"Failed to unsubscribe: {chat_id} (@{username})")
         await update.message.reply_text(
             "❌ Failed to unsubscribe. Please try again later."
         )
@@ -208,11 +245,14 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     username = update.effective_user.username
     
+    logger.info(f"/status command from {chat_id} (@{username})")
+    
     if is_subscribed(chat_id):
         data = load_subscribers()
         for sub in data.get("subscribers", []):
             if sub.get("chat_id") == chat_id:
                 subscribed_at = sub.get("subscribed_at", "Unknown")
+                activity_logger.info(f"STATUS_CHECK (Subscribed) - Chat ID: {chat_id}, Username: @{username}, Since: {subscribed_at}")
                 await update.message.reply_text(
                     f"✅ **Subscription Status: Active**\n\n"
                     f"👤 Username: @{username or 'Unknown'}\n"
@@ -223,6 +263,7 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 return
     else:
+        activity_logger.info(f"STATUS_CHECK (Not subscribed) - Chat ID: {chat_id}, Username: @{username}")
         await update.message.reply_text(
             "❌ **Subscription Status: Not Active**\n\n"
             "Use /subscribe to start receiving notifications.",
@@ -232,9 +273,16 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /stats command."""
+    chat_id = update.effective_chat.id
+    username = update.effective_user.username
+    
+    logger.info(f"/stats command from {chat_id} (@{username})")
+    
     data = load_subscribers()
     total_subs = data.get("stats", {}).get("total_subscribers", 0)
     total_notifs = data.get("stats", {}).get("total_notifications_sent", 0)
+    
+    activity_logger.info(f"STATS_VIEW - Chat ID: {chat_id}, Username: @{username}")
     
     await update.message.reply_text(
         f"📊 **Bot Statistics**\n\n"
@@ -247,6 +295,12 @@ async def stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /help command."""
+    chat_id = update.effective_chat.id
+    username = update.effective_user.username
+    
+    logger.info(f"/help command from {chat_id} (@{username})")
+    activity_logger.info(f"HELP_VIEW - Chat ID: {chat_id}, Username: @{username}")
+    
     help_text = f"""
 📖 **REO Dashboard Bot - Help**
 
@@ -281,8 +335,12 @@ Need help? Check the full documentation at the dashboard link above.
 async def test(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /test command - sends a test notification."""
     chat_id = update.effective_chat.id
+    username = update.effective_user.username
+    
+    logger.info(f"/test command from {chat_id} (@{username})")
     
     if not is_subscribed(chat_id):
+        activity_logger.info(f"TEST_FAILED (Not subscribed) - Chat ID: {chat_id}, Username: @{username}")
         await update.message.reply_text(
             "❌ You must be subscribed to test notifications.\n\n"
             "Use /subscribe first."
@@ -299,8 +357,9 @@ If you received this, you're all set! ✅
 📊 Dashboard: {DASHBOARD_URL}
 """
     
+    activity_logger.info(f"TEST_NOTIFICATION_SENT 🧪 - Chat ID: {chat_id}, Username: @{username}")
     await update.message.reply_text(test_message, parse_mode='Markdown')
-    logger.info(f"Test notification sent to: {chat_id}")
+    logger.info(f"Test notification sent to: {chat_id} (@{username})")
 
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -314,6 +373,17 @@ def main():
         logger.error("TELEGRAM_BOT_TOKEN not found in environment variables!")
         print("❌ Error: TELEGRAM_BOT_TOKEN not set in .env file")
         return
+    
+    # Log bot startup
+    startup_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC")
+    activity_logger.info(f"========== BOT STARTED ==========")
+    activity_logger.info(f"Startup Time: {startup_time}")
+    
+    # Load initial subscriber count
+    data = load_subscribers()
+    total_subs = data.get("stats", {}).get("total_subscribers", 0)
+    activity_logger.info(f"Active Subscribers: {total_subs}")
+    activity_logger.info(f"=================================")
     
     # Create the Application
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
@@ -334,6 +404,7 @@ def main():
     logger.info("Starting REO Dashboard Telegram Bot...")
     print("✅ REO Dashboard Telegram Bot is running!")
     print("📱 Users can now subscribe by sending /start")
+    print(f"📊 Current subscribers: {total_subs}")
     print("🛑 Press Ctrl+C to stop the bot")
     
     application.run_polling(allowed_updates=Update.ALL_TYPES)

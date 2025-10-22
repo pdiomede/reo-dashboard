@@ -44,7 +44,6 @@ active_indexers_previous_run.json
 activity_log_indexers_status_changes.json
 
 # Telegram bot files
-subscribers.json
-telegram_bot.log
-telegram_bot_activity.log
+subscribers_telegram.json
+logs/
 cron.log

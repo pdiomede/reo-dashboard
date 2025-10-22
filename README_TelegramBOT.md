@@ -344,7 +344,7 @@ Simple background process.
 
 ```bash
 cd /home/graph/ftpbox/reo
-nohup python3 telegram_bot.py > telegram_bot.log 2>&1 &
+nohup python3 telegram_bot.py > logs/telegram_bot_nohup.log 2>&1 &
 ```
 
 #### C.2 Verify It's Running
@@ -356,7 +356,9 @@ ps aux | grep telegram_bot.py
 #### C.3 View Logs
 
 ```bash
-tail -f /home/graph/ftpbox/reo/telegram_bot.log
+# Bot creates its own logs in logs/ directory
+tail -f /home/graph/ftpbox/reo/logs/telegram_bot.log
+tail -f /home/graph/ftpbox/reo/logs/telegram_bot_activity.log
 ```
 
 #### C.4 Management Commands
@@ -365,8 +367,9 @@ tail -f /home/graph/ftpbox/reo/telegram_bot.log
 # Check if running
 ps aux | grep telegram_bot.py
 
-# View logs
-tail -f /home/graph/ftpbox/reo/telegram_bot.log
+# View logs (bot logs to logs/ directory)
+tail -f /home/graph/ftpbox/reo/logs/telegram_bot.log
+tail -f /home/graph/ftpbox/reo/logs/telegram_bot_activity.log
 
 # Stop the bot (replace <PID> with actual process ID)
 pkill -f telegram_bot.py
@@ -488,7 +491,8 @@ screen -r telegram_bot  # Reattach to view logs
 
 **If using nohup or file logs:**
 ```bash
-tail -f /home/graph/ftpbox/reo/telegram_bot.log
+tail -f /home/graph/ftpbox/reo/logs/telegram_bot.log
+tail -f /home/graph/ftpbox/reo/logs/telegram_bot_activity.log
 ```
 
 ### Restart Bot
@@ -510,7 +514,7 @@ python3 telegram_bot.py          # Run bot
 ```bash
 pkill -f telegram_bot.py  # Stop
 cd /home/graph/ftpbox/reo
-nohup python3 telegram_bot.py > telegram_bot.log 2>&1 &  # Start
+nohup python3 telegram_bot.py > logs/telegram_bot_nohup.log 2>&1 &  # Start
 ```
 
 ### Stop Bot
@@ -533,12 +537,12 @@ pkill -f telegram_bot.py
 ### Check Subscribers
 
 ```bash
-cat /home/graph/ftpbox/reo/subscribers.json
+cat /home/graph/ftpbox/reo/subscribers_telegram.json
 ```
 
 Or view count:
 ```bash
-cat /home/graph/ftpbox/reo/subscribers.json | grep '"active": true' | wc -l
+cat /home/graph/ftpbox/reo/subscribers_telegram.json | grep '"active": true' | wc -l
 ```
 
 ---

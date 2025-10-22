@@ -17,10 +17,14 @@ load_dotenv()
 
 # Configuration
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-SUBSCRIBERS_FILE = 'subscribers.json'
+SUBSCRIBERS_FILE = 'subscribers_telegram.json'
 DASHBOARD_URL = 'http://dashboards.thegraph.foundation/reo/'
-BOT_LOG_FILE = 'telegram_bot.log'
-ACTIVITY_LOG_FILE = 'telegram_bot_activity.log'
+LOG_DIR = 'logs'
+BOT_LOG_FILE = os.path.join(LOG_DIR, 'telegram_bot.log')
+ACTIVITY_LOG_FILE = os.path.join(LOG_DIR, 'telegram_bot_activity.log')
+
+# Create logs directory if it doesn't exist
+os.makedirs(LOG_DIR, exist_ok=True)
 
 # Set up logging with both console and file output
 logging.basicConfig(

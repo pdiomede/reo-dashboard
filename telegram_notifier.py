@@ -18,7 +18,7 @@ load_dotenv()
 
 # Configuration
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-SUBSCRIBERS_FILE = 'subscribers.json'
+SUBSCRIBERS_FILE = 'subscribers_telegram.json'
 ACTIVITY_LOG_FILE = 'activity_log_indexers_status_changes.json'
 ACTIVE_INDEXERS_FILE = 'active_indexers.json'
 DASHBOARD_URL = 'http://dashboards.thegraph.foundation/reo/'

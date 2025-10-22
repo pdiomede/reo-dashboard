@@ -16,7 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Fixed
-- Fixed status column sorting functionality - now properly sorts by status (eligible, grace, ineligible) in both ascending and descending order
 
 ### Security
 
@@ -24,6 +23,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.8] - 2025-10-22
 
+### Added
+- Telegram notifications integration for real-time alerts on oracle updates and status changes
+- Subscribe to notifications via Telegram bot link in dashboard footer
+
 ### Fixed
-- Fixed status column sorting functionality - status column can now be sorted in both directions
+- Fixed status column sorting functionality - status column can now be sorted in both ascending and descending order
+- Status column now properly sorts by status value (eligible, grace, ineligible) alphabetically
+- Other columns maintain status priority grouping while sorting within those groups
 

@@ -1827,7 +1827,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     html_content += f"""
                 <button class="filter-btn grace" onclick="filterByStatus('grace')"{grace_tooltip}>grace</button>
                 <button class="filter-btn ineligible" onclick="filterByStatus('ineligible')" data-tooltip="Indexers that are NOT eligible for rewards">ineligible</button>
-                <button class="filter-btn reset" onclick="resetFilter()">Reset</button>
+                <button class="filter-btn reset" onclick="resetFilter()" data-tooltip="Show All">Reset</button>
             </div>
         </div>
         

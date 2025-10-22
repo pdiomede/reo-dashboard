@@ -478,6 +478,10 @@ Each time the script runs, it:
   - **Active State**: Selected filters invert colors (solid background, dark text)
   - **Toggle Behavior**: Click again to remove filter
   - **Reset Button**: Clears both search and status filter
+  - **Helpful Tooltips**: Hover over any filter button to see descriptions:
+    - **eligible**: "Indexers that are eligible for rewards"
+    - **grace**: "Grace period is XX days" (dynamically shows actual period from contract)
+    - **ineligible**: "Indexers that are NOT eligible for rewards"
 - **Combined Filtering**: Search and status filters work together
 
 ### Indexers Table

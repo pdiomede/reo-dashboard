@@ -1345,11 +1345,57 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             border: none;
             cursor: pointer;
             transition: all 0.3s ease;
+            position: relative;
         }}
         
         .filter-btn:hover {{
             opacity: 0.8;
             transform: translateY(-1px);
+        }}
+        
+        .filter-btn[data-tooltip]::after {{
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            background: #1a1825;
+            color: #F8F6FF;
+            font-size: 12px;
+            font-weight: 400;
+            white-space: nowrap;
+            border-radius: 6px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            border: 1px solid #9CA3AF;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }}
+        
+        .filter-btn[data-tooltip]:hover::after {{
+            opacity: 1;
+        }}
+        
+        .filter-btn[data-tooltip]::before {{
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 2px;
+            border: 6px solid transparent;
+            border-top-color: #9CA3AF;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+        }}
+        
+        .filter-btn[data-tooltip]:hover::before {{
+            opacity: 1;
         }}
         
         .filter-btn.eligible {{
@@ -1770,17 +1816,17 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             </div>
             <div class="filter-wrapper">
                 <span class="filter-label">Filter by Status:</span>
-                <button class="filter-btn eligible" onclick="filterByStatus('eligible')" title="Indexers that are eligible for rewards">eligible</button>"""
+                <button class="filter-btn eligible" onclick="filterByStatus('eligible')" data-tooltip="Indexers that are eligible for rewards">eligible</button>"""
     
     # Add grace period tooltip if eligibility_period is available
     grace_tooltip = ""
     if eligibility_period:
         days = int(eligibility_period / 86400)
-        grace_tooltip = f' title="Grace period is {days} days"'
+        grace_tooltip = f' data-tooltip="Grace period is {days} days"'
     
     html_content += f"""
                 <button class="filter-btn grace" onclick="filterByStatus('grace')"{grace_tooltip}>grace</button>
-                <button class="filter-btn ineligible" onclick="filterByStatus('ineligible')" title="Indexers that are NOT eligible for rewards">ineligible</button>
+                <button class="filter-btn ineligible" onclick="filterByStatus('ineligible')" data-tooltip="Indexers that are NOT eligible for rewards">ineligible</button>
                 <button class="filter-btn reset" onclick="resetFilter()">Reset</button>
             </div>
         </div>

@@ -19,6 +19,30 @@ This system ensures that rewards are distributed only to indexers who actively s
 - [GIP-0079 Forum Discussion](https://forum.thegraph.com/t/gip-0079-indexer-rewards-eligibility-oracle/6734)
 - [Full GIP-0079 Proposal](https://forum.thegraph.com/t/gip-0079-indexer-rewards-eligibility-oracle/6734)
 
+## 📚 Documentation
+
+This project includes comprehensive documentation:
+
+- **[README.md](README.md)** - Main documentation (this file)
+  - Dashboard features and functionality
+  - How the oracle system works
+  - Installation and usage instructions
+  - File structure and configuration
+  
+- **[README_TelegramBOT.md](README_TelegramBOT.md)** - Telegram Bot Setup Guide
+  - Complete bot deployment instructions
+  - VPS setup and configuration
+  - Systemd service setup for automatic startup
+  - Bot commands and user management
+  - Troubleshooting guide
+  
+- **[LOGGING.md](LOGGING.md)** - Logging System Documentation
+  - Overview of all log files
+  - How to monitor bot activity
+  - Subscriber activity tracking
+  - Error log analysis
+  - Log rotation and maintenance
+
 ## Features
 
 - 📊 **Smart Sorting**: Automatically sorts by eligibility status (eligible → grace → ineligible), then by ENS name

@@ -15,7 +15,7 @@ from typing import List, Tuple, Optional
 from dotenv import load_dotenv
 
 # Version of the dashboard generator
-VERSION = "0.0.16"
+VERSION = "0.0.17"
 
 # Import telegram notifier (will be skipped if module not available)
 try:
@@ -1483,6 +1483,53 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             font-size: 14px;
             font-weight: 500;
             text-align: center;
+            cursor: help;
+            position: relative;
+        }}
+        
+        .counter-label[data-tooltip]::after {{
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            background: #1a1825;
+            color: #F8F6FF;
+            font-size: 12px;
+            font-weight: 400;
+            white-space: nowrap;
+            border-radius: 6px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            border: 1px solid #9CA3AF;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+        }}
+        
+        .counter-label[data-tooltip]:hover::after {{
+            opacity: 1;
+        }}
+        
+        .counter-label[data-tooltip]::before {{
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 2px;
+            border: 6px solid transparent;
+            border-top-color: #9CA3AF;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 1000;
+        }}
+        
+        .counter-label[data-tooltip]:hover::before {{
+            opacity: 1;
         }}
         
         .counter-value {{
@@ -2039,19 +2086,19 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         
         <div class="counters-section">
             <div class="counter-item">
-                <span class="counter-label">Active Indexers:</span>
+                <span class="counter-label" data-tooltip="Active indexers in The Graph Network">Active Indexers:</span>
                 <span class="counter-value">{total_indexers}</span>
             </div>
             <div class="counter-item">
-                <span class="counter-label">Eligible Indexers:</span>
+                <span class="counter-label" data-tooltip="Indexers that are eligible for rewards">Eligible Indexers:</span>
                 <span class="counter-value eligible-count">{eligible_count}</span>
             </div>
             <div class="counter-item">
-                <span class="counter-label">In Grace Period:</span>
+                <span class="counter-label" data-tooltip="Indexers that are still eligible for rewards, but they need to take some actions">In Grace Period:</span>
                 <span class="counter-value grace-count">{grace_count}</span>
             </div>
             <div class="counter-item">
-                <span class="counter-label">Ineligible Indexers:</span>
+                <span class="counter-label" data-tooltip="Indexers that are not eligible for rewards">Ineligible Indexers:</span>
                 <span class="counter-value ineligible-count">{ineligible_count}</span>
             </div>
         </div>

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.17] - 2025-11-17
+
+### Added
+- **Counter Tooltips** - Added hover tooltips to the counters section for better user guidance
+  - "Active Indexers" tooltip: "Active indexers in The Graph Network"
+  - "Eligible Indexers" tooltip: "Indexers that are eligible for rewards"
+  - "In Grace Period" tooltip: "Indexers that are still eligible for rewards, but they need to take some actions"
+  - "Ineligible Indexers" tooltip: "Indexers that are not eligible for rewards"
+  - Tooltips appear on hover with consistent styling matching existing dashboard tooltips
+  - Cursor changes to "help" icon when hovering over counter labels
+
+---
+
 ## [0.0.16] - 2025-11-17
 
 ### Changed

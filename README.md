@@ -21,6 +21,14 @@ This system ensures that rewards are distributed only to indexers who actively s
 
 ## 🆕 Recent Updates
 
+**Version 0.0.17** (Nov 17, 2025):
+- 💡 **Counter Tooltips**: Added hover tooltips to the counters section for better user guidance
+  - "Active Indexers": Active indexers in The Graph Network
+  - "Eligible Indexers": Indexers that are eligible for rewards
+  - "In Grace Period": Indexers that are still eligible for rewards, but they need to take some actions
+  - "Ineligible Indexers": Indexers that are not eligible for rewards
+  - Tooltips appear on hover with consistent styling and help cursor
+
 **Version 0.0.16** (Nov 17, 2025):
 - 📍 **UI Layout Reorganization**: Improved information hierarchy for better user experience
   - Telegram subscription link moved to top banner (where GIP-0079 reference was) for higher visibility

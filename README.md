@@ -21,6 +21,11 @@ This system ensures that rewards are distributed only to indexers who actively s
 
 ## 🆕 Recent Updates
 
+**Version 0.0.16** (Nov 17, 2025):
+- 📍 **UI Layout Reorganization**: Improved information hierarchy for better user experience
+  - Telegram subscription link moved to top banner for higher visibility
+  - GIP-0079 reference moved to footer for educational context
+
 **Version 0.0.15** (Nov 7, 2025):
 - 🌐 **Public Access**: REO dashboard is now publicly accessible without authentication
 - ⚡ **Improved Performance**: Direct static file serving for faster load times + instant transaction fetching via Arbiscan API

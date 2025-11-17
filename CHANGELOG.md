@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.16] - 2025-11-17
+
+### Changed
+- **UI Layout Reorganization** - Improved information hierarchy for better user experience
+  - Moved Telegram subscription link to top banner (where GIP-0079 reference was)
+  - Moved GIP-0079 reference to footer (where Telegram link was)
+  - Telegram bot subscription now has more prominent placement at the top of the dashboard
+  - Footer now includes educational context about the GIP-0079 standard
+
+---
+
 ## [0.0.15] - 2025-11-07
 
 ### Added

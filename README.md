@@ -23,8 +23,10 @@ This system ensures that rewards are distributed only to indexers who actively s
 
 **Version 0.0.16** (Nov 17, 2025):
 - 📍 **UI Layout Reorganization**: Improved information hierarchy for better user experience
-  - Telegram subscription link moved to top banner for higher visibility
-  - GIP-0079 reference moved to footer for educational context
+  - Telegram subscription link moved to top banner (where GIP-0079 reference was) for higher visibility
+  - GIP-0079 reference moved to footer (where Telegram link was) for educational context
+  - Telegram bot subscription now has more prominent placement at the top of the dashboard
+  - Footer now includes educational context about the GIP-0079 standard
 
 **Version 0.0.15** (Nov 7, 2025):
 - 🌐 **Public Access**: REO dashboard is now publicly accessible without authentication

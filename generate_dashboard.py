@@ -1518,7 +1518,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             font-size: 12px;
             font-weight: 400;
             white-space: normal;
-            max-width: 300px;
+            max-width: 200px;
             text-align: center;
             border-radius: 6px;
             opacity: 0;
@@ -1527,6 +1527,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             border: 1px solid #9CA3AF;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             z-index: 9999;
+            line-height: 1.4;
         }}
         
         .counter-label[data-tooltip]:hover::after {{
@@ -1607,7 +1608,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             font-size: 12px;
             font-weight: 400;
             white-space: normal;
-            max-width: 250px;
+            max-width: 180px;
             text-align: center;
             border-radius: 6px;
             opacity: 0;
@@ -1616,6 +1617,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             border: 1px solid #9CA3AF;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
             z-index: 9999;
+            line-height: 1.4;
         }}
         
         .filter-btn[data-tooltip]:hover::after {{

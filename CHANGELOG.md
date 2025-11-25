@@ -10,11 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.18] - 2025-11-25
 
 ### Fixed
-- **Improved Tooltip Readability** - Enabled word wrapping for long tooltip text
+- **Improved Tooltip Readability** - Optimized tooltip layout for compact, readable display
   - Changed `white-space: nowrap` to `white-space: normal` for text wrapping
-  - Added `max-width: 300px` for counter-label tooltips
-  - Added `max-width: 250px` for filter-btn tooltips
+  - Optimized `max-width: 200px` for counter-label tooltips (max 2 lines)
+  - Optimized `max-width: 180px` for filter-btn tooltips (max 2 lines)
+  - Added `line-height: 1.4` for better text spacing and readability
   - Added `text-align: center` for better multi-line appearance
+  - Short tooltips (<30 characters) naturally stay on one line
+  - Longer tooltips wrap to maximum 2 lines for compact, consistent display
   - Fixes issue where "Ineligible Indexers" tooltip text was cut off and not fully visible
   - All tooltip text now wraps properly and is completely readable
 - **Removed Unused CSS** - Cleaned up stylesheet by removing unused CSS rules

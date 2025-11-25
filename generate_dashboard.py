@@ -2194,7 +2194,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         elif status == "ineligible-expired":
             status_badge = '<span class="legend-badge ineligible">Ineligible - Expired</span>'
         else:  # ineligible-unqualified
-            status_badge = '<span class="legend-badge ineligible">Ineligible - Unqualified</span>'
+            status_badge = '<span class="legend-badge ineligible">Unqualified</span>'
         
         # Format Last Renewed cell with transaction link (no tooltip)
         if eligibility_renewal_time_short == "Never":
@@ -2265,7 +2265,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         elif status == "ineligible-expired":
             status_badge = '<span class="legend-badge ineligible">Ineligible - Expired</span>'
         else:  # ineligible-unqualified
-            status_badge = '<span class="legend-badge ineligible">Ineligible - Unqualified</span>'
+            status_badge = '<span class="legend-badge ineligible">Unqualified</span>'
         
         html_content += f"""            ["{address}", "{ens_name}", '{status_badge}', "{eligibility_renewal_time_short}", "{eligibility_renewal_time_readable}", "{eligible_until_short}", "{eligible_until_readable}", "{status}", "{last_renewed_on_tx}"],
 """

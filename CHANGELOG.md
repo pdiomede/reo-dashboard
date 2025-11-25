@@ -10,19 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.18] - 2025-11-25
 
 ### Fixed
-- **Improved Tooltip Readability** - Optimized tooltip layout for compact, readable display
-  - Changed `white-space: nowrap` to `white-space: normal` for text wrapping
-  - Counter-label tooltips: `max-width: 240px` (~40 chars per line)
-  - Filter-btn tooltips: `max-width: 220px` (~36 chars per line)
-  - Added `max-height: 3.6em` to strictly enforce 2-line maximum
-  - Added `overflow: hidden` to cut off any text exceeding 2 lines
-  - Set `line-height: 1.5` for better text spacing and readability
-  - Added `text-align: center` for better multi-line appearance
-  - **Short tooltips (<40 characters) stay on one line**
-  - **Longer tooltips wrap to exactly 2 lines (no more)**
-  - Ensures consistent, compact tooltip appearance across the dashboard
-  - Fixes issue where "Ineligible Indexers" tooltip text was cut off and not fully visible
-  - All tooltip text now displays properly with predictable layout
+- **Tooltips Display on Single Line** - Reverted to simple, reliable single-line tooltip display
+  - All tooltips now use `white-space: nowrap` for single-line display
+  - Removed multi-line wrapping complexity (max-width, max-height, overflow)
+  - Tooltips display full text on one line regardless of length
+  - Simpler CSS, more predictable behavior
+  - Fixed z-index issue - tooltips properly display above all elements (z-index: 9999)
 - **Removed Unused CSS** - Cleaned up stylesheet by removing unused CSS rules
   - Removed `.contract-info`, `.contract-info-header`, `.contract-info-arrow`, `.contract-info-content` classes
   - Removed `.info-item`, `.info-label`, `.info-value` classes (for commented-out contract debug section)

@@ -27,11 +27,18 @@ This system ensures that rewards are distributed only to indexers who actively s
   - Indexers who renewed within buffer period are now considered eligible
   - Prevents unnecessary panic caused by oracle/processing delays
   - Configurable via `GRACE_BUFFER_PERIOD_HOURS` in `.env` (default: 24)
-- 📋 **Updated Status Terminology**: Aligned status names with smart contract states
+- 📋 **Enhanced Status Terminology**: Aligned status names with smart contract states
   - "Eligible" → "Eligible - Active" (actively renewed and fully compliant)
   - "Grace" → "Eligible - Grace" (still eligible but needs action soon)
+  - "Ineligible" → "Ineligible - Expired" (previously eligible but expired)
+  - "Ineligible" → "Ineligible - Unqualified" (never been eligible)
   - Respects the contract's two states (eligible/ineligible) with helpful sub-categorization
   - Status badge colors remain unchanged
+- 💡 **Consistent UI Terminology**: Updated all dashboard elements for consistency
+  - Filter button labels now match status badges: "Eligible - Active", "Eligible - Grace", "Ineligible"
+  - Counter tooltips explain "Active", "Grace", "Expired", and "Unqualified" states
+  - Filter tooltips provide concise, informative descriptions
+  - Complete terminology consistency across badges, filters, and counters
 
 **Version 0.0.17** (Nov 17, 2025):
 - 💡 **Counter Tooltips**: Added hover tooltips to the counters section for better user guidance

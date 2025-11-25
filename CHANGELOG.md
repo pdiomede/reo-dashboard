@@ -20,20 +20,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Updated Status Terminology** - Aligned dashboard status names with smart contract states
   - "Eligible" → "Eligible - Active" (contract-recognized eligible state, actively renewed)
   - "Grace" → "Eligible - Grace" (contract-recognized eligible state, but needs action soon)
-  - "Ineligible" → "Ineligible" (unchanged)
+  - "Ineligible" → "Ineligible - Expired" (indexers who were previously eligible but eligibility expired)
+  - "Ineligible" → "Ineligible - Unqualified" (indexers who have never been marked eligible)
+  - Determined by checking if "Last Renewed" date exists (expired) or is "Never" (unqualified)
   - Dashboard now adds sub-categorization while respecting the two contract states (eligible/ineligible)
   - Status badge colors remain unchanged for visual consistency
   - Updated all status comparisons, sorting logic, and display text throughout the codebase
+- **Consistent UI Terminology** - Enhanced descriptions and consistent terminology throughout
+  - Counter section tooltips now explain all sub-categories
+  - Filter button labels updated: "eligible" → "Eligible - Active", "grace" → "Eligible - Grace", "ineligible" → "Ineligible"
+  - Filter button tooltips now provide concise descriptions for each status
+  - Consistent terminology across all UI elements (badges, filters, counters)
+  - More informative hover guidance for users
 
 ### Technical
 - Added `GRACE_BUFFER_PERIOD_HOURS` environment variable support in `.env`
 - Updated `checkEligibility()` function to accept `grace_buffer_hours` parameter
 - Enhanced status determination logic to use buffer cutoff instead of exact timestamp comparison
 - Added console output showing buffer cutoff time for transparency
-- Updated status values in `checkEligibility()` function
+- Updated status values: "eligible-active", "eligible-grace", "ineligible-expired", "ineligible-unqualified"
 - Updated status priority mappings in both Python and JavaScript sorting functions
 - Updated status badge display text in both static HTML and dynamic JavaScript rendering
-- Status internal values: "eligible-active", "eligible-grace", "ineligible"
+- Updated filter matching logic to handle new ineligible sub-categories
 
 ---
 

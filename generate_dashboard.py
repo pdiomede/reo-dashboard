@@ -840,14 +840,16 @@ def checkEligibility(contract_address: str, rpc_endpoint: str, input_file: str =
                     grace_status_count += 1
                     # Keep previous last_renewed_on_tx (don't update when in grace)
                 else:
-                    indexer["status"] = "ineligible"
+                    # Indexer was eligible before but eligibility expired
+                    indexer["status"] = "ineligible-expired"
                     indexer["eligible_until"] = ""
                     indexer["eligible_until_readable"] = ""
                     indexer["eligible_until_short"] = ""
                     ineligible_status_count += 1
                     # Keep previous last_renewed_on_tx (don't update when ineligible)
             else:
-                indexer["status"] = "ineligible"
+                # Indexer has never been eligible (renewal time is 0 or invalid)
+                indexer["status"] = "ineligible-unqualified"
                 indexer["eligible_until"] = ""
                 indexer["eligible_until_readable"] = ""
                 indexer["eligible_until_short"] = ""
@@ -1159,6 +1161,7 @@ def renderIndexerTable(json_file: str = 'active_indexers.json') -> List[dict]:
                 indexer_with_ens["is_eligible"] = True  # Grace period indexers are still considered eligible
                 grace_count += 1
             else:
+                # All ineligible statuses (ineligible-expired, ineligible-unqualified)
                 indexer_with_ens["is_eligible"] = False
                 ineligible_count += 1
             
@@ -2089,7 +2092,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     total_indexers = len(all_indexers)
     eligible_count = sum(1 for indexer in all_indexers if indexer.get("status") == "eligible-active")
     grace_count = sum(1 for indexer in all_indexers if indexer.get("status") == "eligible-grace")
-    ineligible_count = sum(1 for indexer in all_indexers if indexer.get("status") == "ineligible")
+    ineligible_count = sum(1 for indexer in all_indexers if indexer.get("status") in ["ineligible-expired", "ineligible-unqualified"])
     
     html_content += f"""
         
@@ -2103,15 +2106,15 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 <span class="counter-value">{total_indexers}</span>
             </div>
             <div class="counter-item">
-                <span class="counter-label" data-tooltip="Indexers that are eligible for rewards">Eligible Indexers:</span>
+                <span class="counter-label" data-tooltip="Eligible - Active: Indexers who have recently renewed and are fully compliant">Eligible Indexers:</span>
                 <span class="counter-value eligible-count">{eligible_count}</span>
             </div>
             <div class="counter-item">
-                <span class="counter-label" data-tooltip="Indexers that are still eligible for rewards, but they need to take some actions">In Grace Period:</span>
+                <span class="counter-label" data-tooltip="Eligible - Grace: Indexers still eligible for rewards but need to renew soon to stay compliant">In Grace Period:</span>
                 <span class="counter-value grace-count">{grace_count}</span>
             </div>
             <div class="counter-item">
-                <span class="counter-label" data-tooltip="Indexers that are not eligible for rewards">Ineligible Indexers:</span>
+                <span class="counter-label" data-tooltip="Ineligible: Either expired (previously eligible) or unqualified (never been eligible)">Ineligible Indexers:</span>
                 <span class="counter-value ineligible-count">{ineligible_count}</span>
             </div>
         </div>
@@ -2126,17 +2129,19 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             </div>
             <div class="filter-wrapper">
                 <span class="filter-label">Filter by Status:</span>
-                <button class="filter-btn eligible" onclick="filterByStatus('eligible')" data-tooltip="Indexers that are eligible for rewards">eligible</button>"""
+                <button class="filter-btn eligible" onclick="filterByStatus('eligible')" data-tooltip="Recently renewed, fully compliant">Eligible - Active</button>"""
     
     # Add grace period tooltip if eligibility_period is available
     grace_tooltip = ""
     if eligibility_period:
         days = int(eligibility_period / 86400)
-        grace_tooltip = f' data-tooltip="Grace period is {days} days"'
+        grace_tooltip = f' data-tooltip="Still eligible but need to renew within {days} days"'
+    else:
+        grace_tooltip = ' data-tooltip="Still eligible but need to renew soon"'
     
     html_content += f"""
-                <button class="filter-btn grace" onclick="filterByStatus('grace')"{grace_tooltip}>grace</button>
-                <button class="filter-btn ineligible" onclick="filterByStatus('ineligible')" data-tooltip="Indexers that are NOT eligible for rewards">ineligible</button>
+                <button class="filter-btn grace" onclick="filterByStatus('grace')"{grace_tooltip}>Eligible - Grace</button>
+                <button class="filter-btn ineligible" onclick="filterByStatus('ineligible')" data-tooltip="Expired (previously eligible) or Unqualified (never eligible)">Ineligible</button>
                 <button class="filter-btn reset" onclick="resetFilter()" data-tooltip="Show All">Reset</button>
             </div>
         </div>
@@ -2155,13 +2160,13 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 <tbody id="tableBody">
 """
 
-    # Sort indexers: first by status (eligible-active, eligible-grace, ineligible), then by ENS name
+    # Sort indexers: first by status (eligible-active, eligible-grace, ineligible-expired, ineligible-unqualified), then by ENS name
     def sort_key(indexer):
-        status = indexer.get("status", "ineligible")
+        status = indexer.get("status", "ineligible-unqualified")
         ens_name = indexer.get("ens_name", "")
-        # Status order: eligible-active (0), eligible-grace (1), ineligible (2), then by ENS (empty ENS last)
-        status_priority = {"eligible-active": 0, "eligible-grace": 1, "ineligible": 2}
-        return (status_priority.get(status, 3), ens_name.lower() if ens_name else "zzzzzzzzz")
+        # Status order: eligible-active (0), eligible-grace (1), ineligible-expired (2), ineligible-unqualified (3), then by ENS (empty ENS last)
+        status_priority = {"eligible-active": 0, "eligible-grace": 1, "ineligible-expired": 2, "ineligible-unqualified": 3}
+        return (status_priority.get(status, 4), ens_name.lower() if ens_name else "zzzzzzzzz")
     
     all_indexers_sorted = sorted(all_indexers, key=sort_key)
 
@@ -2186,8 +2191,10 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             status_badge = '<span class="legend-badge good">Eligible - Active</span>'
         elif status == "eligible-grace":
             status_badge = '<span class="legend-badge grace">Eligible - Grace</span>'
-        else:
-            status_badge = '<span class="legend-badge ineligible">Ineligible</span>'
+        elif status == "ineligible-expired":
+            status_badge = '<span class="legend-badge ineligible">Ineligible - Expired</span>'
+        else:  # ineligible-unqualified
+            status_badge = '<span class="legend-badge ineligible">Ineligible - Unqualified</span>'
         
         # Format Last Renewed cell with transaction link (no tooltip)
         if eligibility_renewal_time_short == "Never":
@@ -2229,13 +2236,13 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         const originalData = [
 """
 
-    # Sort indexers: first by status (eligible-active, eligible-grace, ineligible), then by ENS name
+    # Sort indexers: first by status (eligible-active, eligible-grace, ineligible-expired, ineligible-unqualified), then by ENS name
     def sort_key(indexer):
-        status = indexer.get("status", "ineligible")
+        status = indexer.get("status", "ineligible-unqualified")
         ens_name = indexer.get("ens_name", "")
-        # Status order: eligible-active (0), eligible-grace (1), ineligible (2), then by ENS (empty ENS last)
-        status_priority = {"eligible-active": 0, "eligible-grace": 1, "ineligible": 2}
-        return (status_priority.get(status, 3), ens_name.lower() if ens_name else "zzzzzzzzz")
+        # Status order: eligible-active (0), eligible-grace (1), ineligible-expired (2), ineligible-unqualified (3), then by ENS (empty ENS last)
+        status_priority = {"eligible-active": 0, "eligible-grace": 1, "ineligible-expired": 2, "ineligible-unqualified": 3}
+        return (status_priority.get(status, 4), ens_name.lower() if ens_name else "zzzzzzzzz")
     
     all_indexers_sorted = sorted(all_indexers, key=sort_key)
 
@@ -2255,8 +2262,10 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             status_badge = '<span class="legend-badge good">Eligible - Active</span>'
         elif status == "eligible-grace":
             status_badge = '<span class="legend-badge grace">Eligible - Grace</span>'
-        else:
-            status_badge = '<span class="legend-badge ineligible">Ineligible</span>'
+        elif status == "ineligible-expired":
+            status_badge = '<span class="legend-badge ineligible">Ineligible - Expired</span>'
+        else:  # ineligible-unqualified
+            status_badge = '<span class="legend-badge ineligible">Ineligible - Unqualified</span>'
         
         html_content += f"""            ["{address}", "{ens_name}", '{status_badge}', "{eligibility_renewal_time_short}", "{eligibility_renewal_time_readable}", "{eligible_until_short}", "{eligible_until_readable}", "{status}", "{last_renewed_on_tx}"],
 """
@@ -2284,7 +2293,17 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                                      row[1].toLowerCase().includes(searchTerm);
                 
                 // Check status filter (row[7] is the status string)
-                const matchesFilter = !activeFilter || row[7] === activeFilter;
+                // Map filter buttons to actual status values
+                let matchesFilter = true;
+                if (activeFilter) {
+                    if (activeFilter === 'eligible') {
+                        matchesFilter = row[7] === 'eligible-active';
+                    } else if (activeFilter === 'grace') {
+                        matchesFilter = row[7] === 'eligible-grace';
+                    } else if (activeFilter === 'ineligible') {
+                        matchesFilter = row[7] === 'ineligible-expired' || row[7] === 'ineligible-unqualified';
+                    }
+                }
                 
                 return matchesSearch && matchesFilter;
             });
@@ -2383,12 +2402,13 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 }
                 
                 // For other columns, always maintain status priority first
-                // Status order: eligible-active (0), eligible-grace (1), ineligible (2)
+                // Status order: eligible-active (0), eligible-grace (1), ineligible-expired (2), ineligible-unqualified (3)
                 const getStatusPriority = (statusString) => {
                     if (statusString === 'eligible-active') return 0;
                     if (statusString === 'eligible-grace') return 1;
-                    if (statusString === 'ineligible') return 2;
-                    return 3;
+                    if (statusString === 'ineligible-expired') return 2;
+                    if (statusString === 'ineligible-unqualified') return 3;
+                    return 4;
                 };
                 
                 const aStatusPriority = getStatusPriority(a[7]);

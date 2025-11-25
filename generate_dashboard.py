@@ -1517,7 +1517,9 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             color: #F8F6FF;
             font-size: 12px;
             font-weight: 400;
-            white-space: nowrap;
+            white-space: normal;
+            max-width: 300px;
+            text-align: center;
             border-radius: 6px;
             opacity: 0;
             pointer-events: none;
@@ -1604,7 +1606,9 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             color: #F8F6FF;
             font-size: 12px;
             font-weight: 400;
-            white-space: nowrap;
+            white-space: normal;
+            max-width: 250px;
+            text-align: center;
             border-radius: 6px;
             opacity: 0;
             pointer-events: none;
@@ -2027,11 +2031,11 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 <span class="counter-value">{total_indexers}</span>
             </div>
             <div class="counter-item">
-                <span class="counter-label" data-tooltip="Eligible - Active: Indexers who are fully compliant">Eligible Indexers</span>
+                <span class="counter-label" data-tooltip="Eligible (Active): Indexers who are fully compliant">Eligible Indexers (Active)</span>
                 <span class="counter-value eligible-count">{eligible_count}</span>
             </div>
             <div class="counter-item">
-                <span class="counter-label" data-tooltip="Eligible - Grace: Indexers still eligible for rewards but need to renew soon to stay compliant">In Grace Period</span>
+                <span class="counter-label" data-tooltip="Eligible (Grace): Indexers still eligible for rewards but need to renew soon to stay compliant">Eligible Indexers (Grace)</span>
                 <span class="counter-value grace-count">{grace_count}</span>
             </div>
             <div class="counter-item">
@@ -2050,7 +2054,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             </div>
             <div class="filter-wrapper">
                 <span class="filter-label">Filter by Status:</span>
-                <button class="filter-btn eligible" onclick="filterByStatus('eligible')" data-tooltip="Recently renewed, fully compliant">Eligible - Active</button>"""
+                <button class="filter-btn eligible" onclick="filterByStatus('eligible')" data-tooltip="Fully compliant indexers">Eligible - Active</button>"""
     
     # Add grace period tooltip if eligibility_period is available
     grace_tooltip = ""

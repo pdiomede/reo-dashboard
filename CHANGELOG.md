@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.18] - 2025-11-25
 
+### Fixed
+- **Removed Unused CSS** - Cleaned up stylesheet by removing unused CSS rules
+  - Removed `.contract-info`, `.contract-info-header`, `.contract-info-arrow`, `.contract-info-content` classes
+  - Removed `.info-item`, `.info-label`, `.info-value` classes (for commented-out contract debug section)
+  - Removed `.error-message` class (only used in commented-out code)
+  - Kept `.transaction-hash` class as it's actively used for "Last Renewed" transaction links
+  - Reduced CSS file size and improved page load performance
+- **Fixed Tooltip Z-Index Issue** - Tooltips now properly display above all elements
+  - Increased z-index from 1000 to 9999 for all tooltip elements
+  - Added `overflow: visible` to counters section container
+  - Added `position: relative` to counter items for proper positioning context
+  - Tooltips no longer hidden behind frames or other UI elements
+- **Cleaned Up Environment Configuration** - Removed leftover authentication variables
+  - Removed unused `AUTH_COOKIE_SECRET` from `env.example`
+  - Removed unused SMTP configuration variables (from removed grump-auth system)
+  - Kept `DASHBOARD_URL` as it's used by Telegram bot functionality
+  - Simplified configuration file for easier setup
+
 ### Changed
 - **Improved Grace Period Calculation** - Made grace period status determination more robust
   - Added configurable buffer period (default: 24 hours) before `last_oracle_update_time` cutoff

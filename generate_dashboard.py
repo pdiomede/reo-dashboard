@@ -1850,82 +1850,6 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             color: #F8F6FF;
         }}
         
-        .contract-info {{
-            background: #0C0A1D;
-            border-top: 1px solid #9CA3AF;
-        }}
-        
-        .contract-info-header {{
-            padding: 25px 30px;
-            cursor: pointer;
-            user-select: none;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: background 0.3s ease;
-        }}
-        
-        .contract-info-header:hover {{
-            background: #1a1825;
-        }}
-        
-        .contract-info h3 {{
-            color: #F8F6FF;
-            font-size: 1.3em;
-            margin: 0;
-            font-weight: 500;
-        }}
-        
-        .contract-info-arrow {{
-            width: 20px;
-            height: 20px;
-            transition: transform 0.3s ease;
-            color: #9CA3AF;
-        }}
-        
-        .contract-info-arrow.expanded {{
-            transform: rotate(180deg);
-        }}
-        
-        .contract-info-content {{
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-            padding: 0 30px;
-        }}
-        
-        .contract-info-content.expanded {{
-            max-height: 1000px;
-            padding: 0 30px 25px 30px;
-        }}
-        
-        .info-item {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #9CA3AF;
-        }}
-        
-        .info-item:last-child {{
-            border-bottom: none;
-        }}
-        
-        .info-label {{
-            color: #9CA3AF;
-            font-weight: 500;
-            font-size: 14px;
-        }}
-        
-        .info-value {{
-            color: #F8F6FF;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            word-break: break-all;
-            text-align: right;
-            max-width: 60%;
-        }}
-        
         .transaction-hash {{
             color: #F8F6FF;
             text-decoration: none;
@@ -1941,11 +1865,6 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         
         .transaction-hash:hover .external-link-icon {{
             opacity: 1;
-        }}
-        
-        .error-message {{
-            color: #9CA3AF;
-            font-style: italic;
         }}
         
         .footer {{

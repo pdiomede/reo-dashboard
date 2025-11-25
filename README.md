@@ -21,6 +21,13 @@ This system ensures that rewards are distributed only to indexers who actively s
 
 ## 🆕 Recent Updates
 
+**Version 0.0.18** (Nov 25, 2025):
+- 🛡️ **Improved Grace Period Calculation**: Made grace period status more robust against timing delays
+  - Added 24-hour buffer before oracle update cutoff to reduce false warnings
+  - Indexers who renewed within buffer period are now considered eligible
+  - Prevents unnecessary panic caused by oracle/processing delays
+  - Configurable via `GRACE_BUFFER_PERIOD_HOURS` in `.env` (default: 24)
+
 **Version 0.0.17** (Nov 17, 2025):
 - 💡 **Counter Tooltips**: Added hover tooltips to the counters section for better user guidance
   - "Active Indexers": Active indexers in The Graph Network

@@ -15,7 +15,7 @@ from typing import List, Tuple, Optional
 from dotenv import load_dotenv
 
 # Version of the dashboard generator
-VERSION = "0.0.17"
+VERSION = "0.0.18"
 
 # Import telegram notifier (will be skipped if module not available)
 try:
@@ -611,7 +611,7 @@ def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexe
         return False
 
 
-def checkEligibility(contract_address: str, rpc_endpoint: str, input_file: str = 'active_indexers.json') -> bool:
+def checkEligibility(contract_address: str, rpc_endpoint: str, input_file: str = 'active_indexers.json', grace_buffer_hours: int = 24) -> bool:
     """
     Check eligibility for each indexer using a two-pass approach:
     1. First pass: Call isEligible(address) for all indexers and store the result
@@ -624,6 +624,7 @@ def checkEligibility(contract_address: str, rpc_endpoint: str, input_file: str =
         contract_address: The contract address (0x9BED32d2b562043a426376b99d289fE821f5b04E)
         rpc_endpoint: RPC endpoint URL
         input_file: Path to the active_indexers.json file
+        grace_buffer_hours: Buffer period in hours to apply before last_oracle_update_time (default: 24)
         
     Returns:
         True if successful, False otherwise
@@ -784,6 +785,17 @@ def checkEligibility(contract_address: str, rpc_endpoint: str, input_file: str =
         eligibility_period = metadata.get("eligibility_period")
         transaction_hash = metadata.get("transaction_hash", "")
         
+        # Calculate grace period buffer cutoff time
+        # This makes the eligibility check more forgiving by allowing indexers who renewed
+        # within grace_buffer_hours before the oracle update to still be considered eligible
+        grace_buffer_seconds = grace_buffer_hours * 3600
+        grace_buffer_cutoff = last_oracle_update_time - grace_buffer_seconds if last_oracle_update_time else None
+        
+        if grace_buffer_cutoff:
+            dt_buffer = datetime.fromtimestamp(grace_buffer_cutoff, tz=timezone.utc)
+            print(f"✓ Grace buffer: {grace_buffer_hours} hours ({grace_buffer_seconds:,} seconds)")
+            print(f"  Indexers renewed after {dt_buffer.strftime('%-d-%b-%Y at %H:%M:%S UTC')} are considered eligible")
+        
         # Get current timestamp
         current_time = int(datetime.now(timezone.utc).timestamp())
         
@@ -803,9 +815,10 @@ def checkEligibility(contract_address: str, rpc_endpoint: str, input_file: str =
                 indexer["eligibility_renewal_time_readable"] = "Never"
                 indexer["eligibility_renewal_time_short"] = "Never"
             
-            # Set status based on comparison with last_oracle_update_time and grace period
-            if last_oracle_update_time and eligibility_renewal_time == last_oracle_update_time:
-                # Indexer is eligible
+            # Set status based on comparison with grace_buffer_cutoff and grace period
+            # Eligible: renewed at or after (last_oracle_update_time - buffer)
+            if grace_buffer_cutoff and eligibility_renewal_time >= grace_buffer_cutoff:
+                # Indexer is eligible (within buffer period)
                 indexer["status"] = "eligible"
                 indexer["eligible_until"] = ""
                 indexer["eligible_until_readable"] = ""
@@ -814,7 +827,7 @@ def checkEligibility(contract_address: str, rpc_endpoint: str, input_file: str =
                 if transaction_hash:
                     indexer["last_renewed_on_tx"] = transaction_hash
                 eligible_status_count += 1
-            elif eligibility_renewal_time != last_oracle_update_time and eligibility_period and eligibility_renewal_time > 0:
+            elif eligibility_renewal_time < grace_buffer_cutoff and eligibility_period and eligibility_renewal_time > 0:
                 # Check if in grace period
                 grace_period_end = eligibility_renewal_time + eligibility_period
                 if current_time < grace_period_end:
@@ -2632,6 +2645,7 @@ def main():
     contract_address = os.getenv("CONTRACT_ADDRESS")
     api_key = os.getenv("ARBISCAN_API_KEY")
     rpc_endpoint = os.getenv("RPC_ENDPOINT")
+    grace_buffer_hours = int(os.getenv("GRACE_BUFFER_PERIOD_HOURS", "24"))
     
     # Get transaction hash first (before retrieving active indexers)
     # Always fetch fresh data, don't use cached JSON for initial metadata
@@ -2697,7 +2711,7 @@ def main():
     print()
     
     # Check eligibility for each indexer by calling the contract
-    checkEligibility(contract_address, rpc_endpoint)
+    checkEligibility(contract_address, rpc_endpoint, grace_buffer_hours=grace_buffer_hours)
     print()
     
     # Update status change dates by comparing with previous run

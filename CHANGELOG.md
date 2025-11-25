@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.18] - 2025-11-25
+
+### Changed
+- **Improved Grace Period Calculation** - Made grace period status determination more robust
+  - Added configurable buffer period (default: 24 hours) before `last_oracle_update_time` cutoff
+  - Indexers who renewed within buffer period are now considered eligible instead of in grace period
+  - Reduces false warnings caused by oracle update delays, processing delays, or network latency
+  - Buffer configurable via `GRACE_BUFFER_PERIOD_HOURS` in `.env` file (default: 24)
+  - More forgiving eligibility logic prevents unnecessary panic for compliant indexers
+  - Formula: Eligible if `eligibility_renewal_time >= (last_oracle_update_time - buffer)`
+
+### Technical
+- Added `GRACE_BUFFER_PERIOD_HOURS` environment variable support in `.env`
+- Updated `checkEligibility()` function to accept `grace_buffer_hours` parameter
+- Enhanced status determination logic to use buffer cutoff instead of exact timestamp comparison
+- Added console output showing buffer cutoff time for transparency
+
+---
+
 ## [0.0.17] - 2025-11-17
 
 ### Added

@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Filter button tooltips now provide concise descriptions for each status
   - Consistent terminology across all UI elements (badges, filters, counters)
   - More informative hover guidance for users
+- **Simplified Status Badge Labels** - Cleaner, more concise badge text for better readability
+  - "Eligible - Active" → "Active" (shorter, clearer)
+  - "Ineligible - Expired" → "Expired" (shorter, clearer)
+  - "Ineligible - Unqualified" → "Unqualified" (shorter, clearer)
+  - "Eligible - Grace" remains unchanged for clarity (needs the context)
+  - Improved visual hierarchy and reduced badge clutter
 
 ### Technical
 - Added `GRACE_BUFFER_PERIOD_HOURS` environment variable support in `.env`

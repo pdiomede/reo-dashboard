@@ -39,6 +39,10 @@ This system ensures that rewards are distributed only to indexers who actively s
   - Counter tooltips explain "Active", "Grace", "Expired", and "Unqualified" states
   - Filter tooltips provide concise, informative descriptions
   - Complete terminology consistency across badges, filters, and counters
+- 🎨 **Simplified Status Badges**: Cleaner badge labels for better readability
+  - "Active", "Expired", and "Unqualified" badges now show concise text
+  - "Eligible - Grace" retains full label for clarity
+  - Improved visual hierarchy and reduced clutter
 
 **Version 0.0.17** (Nov 17, 2025):
 - 💡 **Counter Tooltips**: Added hover tooltips to the counters section for better user guidance

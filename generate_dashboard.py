@@ -2192,7 +2192,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         elif status == "eligible-grace":
             status_badge = '<span class="legend-badge grace">Eligible - Grace</span>'
         elif status == "ineligible-expired":
-            status_badge = '<span class="legend-badge ineligible">Ineligible - Expired</span>'
+            status_badge = '<span class="legend-badge ineligible">Expired</span>'
         else:  # ineligible-unqualified
             status_badge = '<span class="legend-badge ineligible">Unqualified</span>'
         
@@ -2263,7 +2263,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         elif status == "eligible-grace":
             status_badge = '<span class="legend-badge grace">Eligible - Grace</span>'
         elif status == "ineligible-expired":
-            status_badge = '<span class="legend-badge ineligible">Ineligible - Expired</span>'
+            status_badge = '<span class="legend-badge ineligible">Expired</span>'
         else:  # ineligible-unqualified
             status_badge = '<span class="legend-badge ineligible">Unqualified</span>'
         

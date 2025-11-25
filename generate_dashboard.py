@@ -819,7 +819,7 @@ def checkEligibility(contract_address: str, rpc_endpoint: str, input_file: str =
             # Eligible: renewed at or after (last_oracle_update_time - buffer)
             if grace_buffer_cutoff and eligibility_renewal_time >= grace_buffer_cutoff:
                 # Indexer is eligible (within buffer period)
-                indexer["status"] = "eligible"
+                indexer["status"] = "eligible-active"
                 indexer["eligible_until"] = ""
                 indexer["eligible_until_readable"] = ""
                 indexer["eligible_until_short"] = ""
@@ -831,7 +831,7 @@ def checkEligibility(contract_address: str, rpc_endpoint: str, input_file: str =
                 # Check if in grace period
                 grace_period_end = eligibility_renewal_time + eligibility_period
                 if current_time < grace_period_end:
-                    indexer["status"] = "grace"
+                    indexer["status"] = "eligible-grace"
                     indexer["eligible_until"] = grace_period_end
                     # Format: 2-Nov-2025 at 19:25:55 UTC (day without leading zero)
                     dt = datetime.fromtimestamp(grace_period_end, tz=timezone.utc)
@@ -1152,10 +1152,10 @@ def renderIndexerTable(json_file: str = 'active_indexers.json') -> List[dict]:
             indexer_with_ens["status"] = status
             
             # Set is_eligible based on status
-            if status == "eligible":
+            if status == "eligible-active":
                 indexer_with_ens["is_eligible"] = True
                 eligible_count += 1
-            elif status == "grace":
+            elif status == "eligible-grace":
                 indexer_with_ens["is_eligible"] = True  # Grace period indexers are still considered eligible
                 grace_count += 1
             else:
@@ -2087,8 +2087,8 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     
     # Calculate counters
     total_indexers = len(all_indexers)
-    eligible_count = sum(1 for indexer in all_indexers if indexer.get("status") == "eligible")
-    grace_count = sum(1 for indexer in all_indexers if indexer.get("status") == "grace")
+    eligible_count = sum(1 for indexer in all_indexers if indexer.get("status") == "eligible-active")
+    grace_count = sum(1 for indexer in all_indexers if indexer.get("status") == "eligible-grace")
     ineligible_count = sum(1 for indexer in all_indexers if indexer.get("status") == "ineligible")
     
     html_content += f"""
@@ -2155,12 +2155,12 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 <tbody id="tableBody">
 """
 
-    # Sort indexers: first by status (eligible, grace, ineligible), then by ENS name
+    # Sort indexers: first by status (eligible-active, eligible-grace, ineligible), then by ENS name
     def sort_key(indexer):
         status = indexer.get("status", "ineligible")
         ens_name = indexer.get("ens_name", "")
-        # Status order: eligible (0), grace (1), ineligible (2), then by ENS (empty ENS last)
-        status_priority = {"eligible": 0, "grace": 1, "ineligible": 2}
+        # Status order: eligible-active (0), eligible-grace (1), ineligible (2), then by ENS (empty ENS last)
+        status_priority = {"eligible-active": 0, "eligible-grace": 1, "ineligible": 2}
         return (status_priority.get(status, 3), ens_name.lower() if ens_name else "zzzzzzzzz")
     
     all_indexers_sorted = sorted(all_indexers, key=sort_key)
@@ -2169,7 +2169,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     for i, indexer in enumerate(all_indexers_sorted, 1):
         address = indexer.get("address", "")
         ens_name = indexer.get("ens_name", "")
-        is_eligible = indexer.get("is_eligible", False)
+        status = indexer.get("status", "ineligible")
         ens_display = ens_name if ens_name else "No ENS"
         ens_class = "ens-name" if ens_name else "empty-ens"
         explorer_url = f"https://thegraph.com/explorer/profile/{address}?view=Indexing&chain=arbitrum-one"
@@ -2181,11 +2181,13 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         eligible_until_readable = indexer.get("eligible_until_readable", "")
         last_renewed_on_tx = indexer.get("last_renewed_on_tx", "")
         
-        # Set status badge based on eligibility
-        if is_eligible:
-            status_badge = '<span class="legend-badge good">eligible</span>'
+        # Set status badge based on status
+        if status == "eligible-active":
+            status_badge = '<span class="legend-badge good">Eligible - Active</span>'
+        elif status == "eligible-grace":
+            status_badge = '<span class="legend-badge grace">Eligible - Grace</span>'
         else:
-            status_badge = '<span class="legend-badge ineligible">ineligible</span>'
+            status_badge = '<span class="legend-badge ineligible">Ineligible</span>'
         
         # Format Last Renewed cell with transaction link (no tooltip)
         if eligibility_renewal_time_short == "Never":
@@ -2227,12 +2229,12 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         const originalData = [
 """
 
-    # Sort indexers: first by status (eligible, grace, ineligible), then by ENS name
+    # Sort indexers: first by status (eligible-active, eligible-grace, ineligible), then by ENS name
     def sort_key(indexer):
         status = indexer.get("status", "ineligible")
         ens_name = indexer.get("ens_name", "")
-        # Status order: eligible (0), grace (1), ineligible (2), then by ENS (empty ENS last)
-        status_priority = {"eligible": 0, "grace": 1, "ineligible": 2}
+        # Status order: eligible-active (0), eligible-grace (1), ineligible (2), then by ENS (empty ENS last)
+        status_priority = {"eligible-active": 0, "eligible-grace": 1, "ineligible": 2}
         return (status_priority.get(status, 3), ens_name.lower() if ens_name else "zzzzzzzzz")
     
     all_indexers_sorted = sorted(all_indexers, key=sort_key)
@@ -2249,12 +2251,12 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         last_renewed_on_tx = indexer.get("last_renewed_on_tx", "")
         
         # Set status badge based on status
-        if status == "eligible":
-            status_badge = '<span class="legend-badge good">eligible</span>'
-        elif status == "grace":
-            status_badge = '<span class="legend-badge grace">grace</span>'
+        if status == "eligible-active":
+            status_badge = '<span class="legend-badge good">Eligible - Active</span>'
+        elif status == "eligible-grace":
+            status_badge = '<span class="legend-badge grace">Eligible - Grace</span>'
         else:
-            status_badge = '<span class="legend-badge ineligible">ineligible</span>'
+            status_badge = '<span class="legend-badge ineligible">Ineligible</span>'
         
         html_content += f"""            ["{address}", "{ens_name}", '{status_badge}', "{eligibility_renewal_time_short}", "{eligibility_renewal_time_readable}", "{eligible_until_short}", "{eligible_until_readable}", "{status}", "{last_renewed_on_tx}"],
 """
@@ -2381,10 +2383,10 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 }
                 
                 // For other columns, always maintain status priority first
-                // Status order: eligible (0), grace (1), ineligible (2)
+                // Status order: eligible-active (0), eligible-grace (1), ineligible (2)
                 const getStatusPriority = (statusString) => {
-                    if (statusString === 'eligible') return 0;
-                    if (statusString === 'grace') return 1;
+                    if (statusString === 'eligible-active') return 0;
+                    if (statusString === 'eligible-grace') return 1;
                     if (statusString === 'ineligible') return 2;
                     return 3;
                 };

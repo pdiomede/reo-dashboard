@@ -22,6 +22,16 @@ This system ensures that rewards are distributed only to indexers who actively s
 ## 🆕 Recent Updates
 
 **Version 0.0.18** (Nov 25, 2025):
+- 🔄 **Round-Robin RPC Endpoint Support**: Load balancing and failover for multiple RPC endpoints
+  - Support for multiple RPC endpoints via `RPC_ENDPOINT_1`, `RPC_ENDPOINT_2`, etc. in `.env`
+  - Automatic round-robin distribution of RPC calls across available endpoints
+  - Backward compatible with single `RPC_ENDPOINT` variable
+  - Improved reliability through automatic failover
+  - Enhanced performance by distributing load across endpoints
+- 🔒 **Enhanced API Key Security**: Improved masking of sensitive information in logs
+  - Fixed incomplete masking of API keys in query parameters and paths
+  - All RPC endpoints now properly mask sensitive information
+  - Prevents accidental exposure of API keys in console output
 - 🛡️ **Improved Grace Period Calculation**: Made grace period status more robust against timing delays
   - Added 24-hour buffer before oracle update cutoff to reduce false warnings
   - Indexers who renewed within buffer period are now considered eligible
@@ -609,6 +619,9 @@ The script reads configuration from a `.env` file in the project root.
    CONTRACT_ADDRESS=0x9BED32d2b562043a426376b99d289fE821f5b04E
    ARBISCAN_API_KEY=your_arbiscan_api_key
    RPC_ENDPOINT=your_rpc_endpoint_url
+   # Optional: Add multiple RPC endpoints for round-robin load balancing
+   # RPC_ENDPOINT_1=https://rpc.ankr.com/arbitrum_sepolia
+   # RPC_ENDPOINT_2=https://1rpc.io/sepolia-arbitrum
    GRAPH_API_KEY=your_graph_api_key
    USE_CACHED_ENS=N
    ```
@@ -671,14 +684,20 @@ All configuration is managed through environment variables in the `.env` file:
 - **Get yours**: [Arbiscan API Keys](https://arbiscan.io/myapikey)
 
 ### RPC Endpoint
-- **Variable**: `RPC_ENDPOINT`
+- **Variable**: `RPC_ENDPOINT` (single endpoint) or `RPC_ENDPOINT_1`, `RPC_ENDPOINT_2`, etc. (multiple endpoints)
 - **Purpose**: Connects to Arbitrum Sepolia for real-time blockchain data
+- **Round-Robin Support**: You can specify multiple RPC endpoints for load balancing and failover
+  - Use `RPC_ENDPOINT` for a single endpoint (backward compatible)
+  - Use `RPC_ENDPOINT_1`, `RPC_ENDPOINT_2`, `RPC_ENDPOINT_3`, etc. for multiple endpoints
+  - The script automatically distributes RPC calls across all available endpoints
+  - If one endpoint fails, the script automatically tries the next one
 - **Supported Providers**: Any Ethereum RPC provider (Alchemy, Infura, QuickNode, Ankr, etc.)
 - **Get yours**: 
   - [QuickNode](https://quicknode.com)
   - [Alchemy](https://alchemy.com)
   - [Infura](https://infura.io)
   - [Ankr](https://ankr.com)
+  - Public endpoints: `https://rpc.ankr.com/arbitrum_sepolia`, `https://1rpc.io/sepolia-arbitrum`
 
 ### The Graph API Key
 - **Variable**: `GRAPH_API_KEY`

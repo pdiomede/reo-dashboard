@@ -9,7 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.18] - 2025-11-25
 
+### Added
+- **Round-Robin RPC Endpoint Support** - Load balancing and failover for multiple RPC endpoints
+  - Support for multiple RPC endpoints via `RPC_ENDPOINT_1`, `RPC_ENDPOINT_2`, etc. environment variables
+  - Automatic round-robin distribution of RPC calls across available endpoints
+  - Backward compatible with single `RPC_ENDPOINT` variable
+  - Thread-safe endpoint selection for concurrent operations
+  - Improved reliability and performance through endpoint rotation
+  - `retry_all` parameter for critical calls to try all endpoints before failing
+
 ### Fixed
+- **API Key Masking in Logs** - Enhanced security for RPC endpoint logging
+  - Fixed incomplete masking of API keys in query parameters (e.g., `?apikey=xxx`)
+  - Improved masking for path-based API keys (e.g., `/v2/xxx`, `/v3/xxx`)
+  - All RPC endpoints now properly mask sensitive information in logs and error messages
+  - Prevents accidental exposure of API keys in console output
+- **Documentation Bug** - Fixed incorrect parameter documentation in `retrieveActiveIndexers` function
+  - Updated docstring to correctly reference `rpc_manager` instead of deprecated `rpc_endpoint` parameter
 - **Tooltips Display on Single Line** - Reverted to simple, reliable single-line tooltip display
   - All tooltips now use `white-space: nowrap` for single-line display
   - Removed multi-line wrapping complexity (max-width, max-height, overflow)

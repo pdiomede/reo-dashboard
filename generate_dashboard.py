@@ -13,9 +13,176 @@ import shutil
 from datetime import datetime, timezone
 from typing import List, Tuple, Optional
 from dotenv import load_dotenv
+import threading
 
 # Version of the dashboard generator
 VERSION = "0.0.18"
+
+
+class RoundRobinRPC:
+    """
+    Round-robin RPC endpoint manager.
+    Cycles through multiple RPC endpoints for load balancing and failover.
+    """
+    def __init__(self):
+        self.endpoints = []
+        self.current_index = 0
+        self.lock = threading.Lock()
+        self._load_endpoints()
+    
+    def _load_endpoints(self):
+        """Load RPC endpoints from environment variables."""
+        # Try RPC_ENDPOINT first (backward compatibility)
+        rpc_endpoint = os.getenv("RPC_ENDPOINT")
+        if rpc_endpoint:
+            self.endpoints.append(rpc_endpoint)
+        
+        # Try RPC_ENDPOINT_1, RPC_ENDPOINT_2, etc.
+        i = 1
+        while True:
+            endpoint = os.getenv(f"RPC_ENDPOINT_{i}")
+            if endpoint:
+                self.endpoints.append(endpoint)
+                i += 1
+            else:
+                break
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        self.endpoints = [x for x in self.endpoints if not (x in seen or seen.add(x))]
+        
+        if not self.endpoints:
+            print("⚠ Warning: No RPC endpoints found in environment variables")
+        else:
+            print(f"✓ Loaded {len(self.endpoints)} RPC endpoint(s) for round-robin")
+            for i, endpoint in enumerate(self.endpoints, 1):
+                # Mask API keys in display using the same logic as _mask_endpoint
+                display_endpoint = self._mask_endpoint(endpoint)
+                print(f"  {i}. {display_endpoint}")
+    
+    def get_next(self) -> Optional[str]:
+        """
+        Get the next RPC endpoint in round-robin fashion.
+        
+        Returns:
+            RPC endpoint URL or None if no endpoints available
+        """
+        with self.lock:
+            if not self.endpoints:
+                return None
+            
+            endpoint = self.endpoints[self.current_index]
+            self.current_index = (self.current_index + 1) % len(self.endpoints)
+            return endpoint
+    
+    def get_all(self) -> List[str]:
+        """Get all available RPC endpoints."""
+        return self.endpoints.copy()
+    
+    def rpc_call(self, method: str, params: list, timeout: int = 15, retry_all: bool = False) -> Optional[dict]:
+        """
+        Make an RPC call using round-robin endpoint selection.
+        If retry_all is True, will try all endpoints before giving up.
+        
+        Args:
+            method: RPC method name (e.g., 'eth_call', 'eth_blockNumber')
+            params: RPC method parameters
+            timeout: Request timeout in seconds
+            retry_all: If True, try all endpoints on failure; if False, try only one
+            
+        Returns:
+            RPC response result or None if all attempts failed
+        """
+        if not self.endpoints:
+            print(f"❌ No RPC endpoints available for {method}")
+            return None
+        
+        endpoints_to_try = self.endpoints.copy() if retry_all else [self.get_next()]
+        
+        for endpoint in endpoints_to_try:
+            try:
+                response = requests.post(
+                    endpoint,
+                    json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
+                    timeout=timeout,
+                )
+                response.raise_for_status()
+                data = response.json()
+                
+                if isinstance(data, dict) and data.get("error"):
+                    error_msg = data['error'].get('message', 'Unknown error')
+                    print(f"⚠ RPC error for {method} on {self._mask_endpoint(endpoint)}: {error_msg}")
+                    if retry_all:
+                        continue
+                    return None
+                
+                return data.get("result")
+            except requests.exceptions.Timeout:
+                print(f"⚠ Timeout for {method} on {self._mask_endpoint(endpoint)}")
+                if retry_all:
+                    continue
+                return None
+            except requests.exceptions.RequestException as e:
+                print(f"⚠ Request exception for {method} on {self._mask_endpoint(endpoint)}: {e}")
+                if retry_all:
+                    continue
+                return None
+            except Exception as e:
+                print(f"⚠ Exception for {method} on {self._mask_endpoint(endpoint)}: {e}")
+                if retry_all:
+                    continue
+                return None
+        
+        print(f"❌ All RPC endpoints failed for {method}")
+        return None
+    
+    def _mask_endpoint(self, endpoint: str) -> str:
+        """Mask sensitive parts of endpoint URL for logging."""
+        try:
+            # Handle URLs with API keys in query parameters (e.g., ?apikey=xxx)
+            if 'apikey=' in endpoint.lower():
+                # Split on '?' to separate base URL from query params
+                if '?' in endpoint:
+                    base_url = endpoint.split('?')[0]
+                    return base_url + '?***'
+                # If apikey is in path (unlikely but possible)
+                parts = endpoint.split('/')
+                if len(parts) > 0:
+                    return '/'.join(parts[:3]) + '/***'
+            
+            # Handle URLs with API keys in path (e.g., /v2/xxx or /v3/xxx)
+            if '/v3/' in endpoint or '/v2/' in endpoint:
+                parts = endpoint.split('/')
+                if len(parts) > 0:
+                    # Find the index of /v2/ or /v3/
+                    v_index = -1
+                    for i, part in enumerate(parts):
+                        if part in ['v2', 'v3']:
+                            v_index = i
+                            break
+                    if v_index >= 0 and v_index + 1 < len(parts):
+                        # Mask everything after /v2/ or /v3/
+                        return '/'.join(parts[:v_index + 2]) + '/***'
+                    else:
+                        # Fallback: mask after first 3 parts
+                        return '/'.join(parts[:3]) + '/***'
+        except Exception:
+            # If masking fails, return original endpoint (better than crashing)
+            pass
+        
+        return endpoint
+
+
+# Global round-robin RPC manager instance
+_rpc_manager = None
+
+
+def get_rpc_manager() -> RoundRobinRPC:
+    """Get or create the global RPC manager instance."""
+    global _rpc_manager
+    if _rpc_manager is None:
+        _rpc_manager = RoundRobinRPC()
+    return _rpc_manager
 
 # Import telegram notifier (will be skipped if module not available)
 try:
@@ -99,13 +266,13 @@ def get_last_transaction(contract_address: str, api_key: str) -> Optional[dict]:
         "chainid": "421614",  # Arbitrum Sepolia chain ID
         "apikey": api_key
     }
-
+        
     try:
         print(f"Fetching latest transaction from Arbiscan API (Etherscan V2)...")
         response = requests.get(base_url, params=params, timeout=15)
         response.raise_for_status()  # Raise error for bad status codes
         data = response.json()
-
+        
         if data.get("status") == "1" and data.get("result"):
             tx = data["result"][0]
             tx_hash = tx["hash"]
@@ -134,29 +301,19 @@ def get_last_transaction(contract_address: str, api_key: str) -> Optional[dict]:
         return None
 
 
-def get_last_transaction_via_rpc(contract_address: str, rpc_endpoint: str) -> Optional[dict]:
+def get_last_transaction_via_rpc(contract_address: str, rpc_manager: Optional[RoundRobinRPC] = None) -> Optional[dict]:
     """
     Get the last transaction touching the contract using an RPC endpoint.
     Strategy: Scan recent blocks and find transactions where 'to' == contract address.
     Skips eth_getLogs entirely as it causes 413 errors on contracts with many events.
     Returns a dict with 'hash', 'blockNumber' (as decimal string), and 'timeStamp' (as decimal string) or None.
+    
+    Args:
+        contract_address: The contract address to query
+        rpc_manager: RoundRobinRPC instance (if None, uses global instance)
     """
-    def rpc_call(method: str, params: list) -> Optional[dict]:
-        try:
-            response = requests.post(
-                rpc_endpoint,
-                json={"jsonrpc": "2.0", "id": 1, "method": method, "params": params},
-                timeout=15,
-            )
-            response.raise_for_status()
-            data = response.json()
-            if isinstance(data, dict) and data.get("error"):
-                print(f"RPC error for {method}: {data['error']}")
-                return None
-            return data.get("result")
-        except Exception as e:
-            print(f"RPC exception for {method}: {e}")
-            return None
+    if rpc_manager is None:
+        rpc_manager = get_rpc_manager()
 
     def hex_to_dec_str(hex_str: Optional[str]) -> str:
         try:
@@ -166,7 +323,7 @@ def get_last_transaction_via_rpc(contract_address: str, rpc_endpoint: str) -> Op
 
     try:
         print("Fetching latest block number...")
-        latest_hex = rpc_call("eth_blockNumber", [])
+        latest_hex = rpc_manager.rpc_call("eth_blockNumber", [])
         if not latest_hex:
             return None
         latest_int = int(latest_hex, 16)
@@ -189,7 +346,7 @@ def get_last_transaction_via_rpc(contract_address: str, rpc_endpoint: str) -> Op
                 break
             
             # Get block with FULL transaction objects (True flag)
-            block = rpc_call("eth_getBlockByNumber", [hex(block_num), True])
+            block = rpc_manager.rpc_call("eth_getBlockByNumber", [hex(block_num), True])
             if not isinstance(block, dict):
                 continue
             
@@ -242,84 +399,72 @@ def get_last_transaction_via_rpc(contract_address: str, rpc_endpoint: str) -> Op
         return None
 
 
-def get_oracle_update_time(contract_address: str, rpc_endpoint: str) -> Optional[int]:
+def get_oracle_update_time(contract_address: str, rpc_manager: Optional[RoundRobinRPC] = None) -> Optional[int]:
     """
     Get the last oracle update time from the contract by calling getLastOracleUpdateTime().
     
     Args:
         contract_address: The contract address
-        rpc_endpoint: RPC endpoint URL
+        rpc_manager: RoundRobinRPC instance (if None, uses global instance)
         
     Returns:
         Unix timestamp of last oracle update or None if error
     """
+    if rpc_manager is None:
+        rpc_manager = get_rpc_manager()
+    
     try:
         # Function selector for getLastOracleUpdateTime()
         # keccak256("getLastOracleUpdateTime()") = 0xbe626dd2...
         function_selector = '0xbe626dd2' + '0' * 56  # Padded to 32 bytes
         
-        payload = {
-            'jsonrpc': '2.0',
-            'method': 'eth_call',
-            'params': [{
-                'to': contract_address,
-                'data': function_selector
-            }, 'latest'],
-            'id': 1
-        }
+        result = rpc_manager.rpc_call('eth_call', [{
+            'to': contract_address,
+            'data': function_selector
+        }, 'latest'], timeout=10, retry_all=True)
         
-        response = requests.post(rpc_endpoint, json=payload, timeout=10)
-        result = response.json()
-        
-        if 'result' in result and result['result'] != '0x':
-            timestamp = int(result['result'], 16)
+        if result and result != '0x':
+            timestamp = int(result, 16)
             print(f"Oracle update time retrieved: {timestamp}")
             return timestamp
         else:
-            error_msg = result.get('error', {}).get('message', 'Unknown error')
-            print(f"Error getting oracle update time: {error_msg}")
+            print(f"Error getting oracle update time: No valid result")
             return None
     except Exception as e:
         print(f"Exception getting oracle update time: {e}")
         return None
 
 
-def get_eligibility_period(contract_address: str, rpc_endpoint: str) -> Optional[int]:
+def get_eligibility_period(contract_address: str, rpc_manager: Optional[RoundRobinRPC] = None) -> Optional[int]:
     """
     Get the eligibility period from the contract by calling getEligibilityPeriod().
     
     Args:
         contract_address: The contract address
-        rpc_endpoint: RPC endpoint URL
+        rpc_manager: RoundRobinRPC instance (if None, uses global instance)
         
     Returns:
         Eligibility period in seconds or None if error
     """
+    if rpc_manager is None:
+        rpc_manager = get_rpc_manager()
+    
     try:
         # Function selector for getEligibilityPeriod()
         # keccak256("getEligibilityPeriod()") = 0xd0a5379e...
         function_selector = '0xd0a5379e' + '0' * 56  # Padded to 32 bytes
         
-        payload = {
-            'jsonrpc': '2.0',
-            'method': 'eth_call',
-            'params': [{
-                'to': contract_address,
-                'data': function_selector
-            }, 'latest'],
-            'id': 1
-        }
+        result = rpc_manager.rpc_call('eth_call', [{
+            'to': contract_address,
+            'data': function_selector
+        }, 'latest'], timeout=10, retry_all=True)
         
-        response = requests.post(rpc_endpoint, json=payload, timeout=10)
-        result = response.json()
-        
-        if 'result' in result and result['result'] != '0x':
-            period = int(result['result'], 16)
+        if result and result != '0x':
+            period = int(result, 16)
             print(f"Eligibility period retrieved: {period} seconds")
             return period
         else:
-            error_msg = result.get('error', {}).get('message', 'Unknown error')
-            print(f"Error getting eligibility period: {error_msg}")
+            print(f"Error getting eligibility period: No valid result")
             return None
     except Exception as e:
         print(f"Exception getting eligibility period: {e}")
@@ -390,7 +535,7 @@ def load_ens_cache(cache_file: str = 'ens_resolution.json') -> Optional[dict]:
         return None
 
 
-def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexers.json', use_cached_ens: bool = False, contract_address: Optional[str] = None, rpc_endpoint: Optional[str] = None, transaction_hash: Optional[str] = None) -> bool:
+def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexers.json', use_cached_ens: bool = False, contract_address: Optional[str] = None, rpc_manager: Optional[RoundRobinRPC] = None, transaction_hash: Optional[str] = None) -> bool:
     """
     Retrieve the list of active indexers with self stake > 0 from The Graph's network subgraph.
     ENS resolution can be cached or fetched from subgraph based on use_cached_ens parameter.
@@ -403,7 +548,7 @@ def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexe
         output_file: Path to the output file (default: active_indexers.json)
         use_cached_ens: If True, use cached ENS data; if False, fetch from subgraph
         contract_address: The contract address to query oracle update time
-        rpc_endpoint: RPC endpoint URL
+        rpc_manager: RoundRobinRPC instance (if None, uses global instance)
         transaction_hash: Transaction hash to store in metadata (optional)
         
     Returns:
@@ -536,11 +681,14 @@ def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexe
         # Get oracle update time and eligibility period from contract if available
         last_oracle_update_time = None
         eligibility_period = None
-        if contract_address and rpc_endpoint:
-            print(f"Fetching last oracle update time from contract...")
-            last_oracle_update_time = get_oracle_update_time(contract_address, rpc_endpoint)
-            print(f"Fetching eligibility period from contract...")
-            eligibility_period = get_eligibility_period(contract_address, rpc_endpoint)
+        if contract_address:
+            if rpc_manager is None:
+                rpc_manager = get_rpc_manager()
+            if rpc_manager.endpoints:
+                print(f"Fetching last oracle update time from contract...")
+                last_oracle_update_time = get_oracle_update_time(contract_address, rpc_manager)
+                print(f"Fetching eligibility period from contract...")
+                eligibility_period = get_eligibility_period(contract_address, rpc_manager)
         
         output_data = {
             "metadata": {
@@ -611,7 +759,7 @@ def retrieveActiveIndexers(graph_api_key: str, output_file: str = 'active_indexe
         return False
 
 
-def checkEligibility(contract_address: str, rpc_endpoint: str, input_file: str = 'active_indexers.json', grace_buffer_hours: int = 24) -> bool:
+def checkEligibility(contract_address: str, rpc_manager: Optional[RoundRobinRPC] = None, input_file: str = 'active_indexers.json', grace_buffer_hours: int = 24) -> bool:
     """
     Check eligibility for each indexer using a two-pass approach:
     1. First pass: Call isEligible(address) for all indexers and store the result
@@ -622,13 +770,15 @@ def checkEligibility(contract_address: str, rpc_endpoint: str, input_file: str =
     
     Args:
         contract_address: The contract address (0x9BED32d2b562043a426376b99d289fE821f5b04E)
-        rpc_endpoint: RPC endpoint URL
+        rpc_manager: RoundRobinRPC instance (if None, uses global instance)
         input_file: Path to the active_indexers.json file
         grace_buffer_hours: Buffer period in hours to apply before last_oracle_update_time (default: 24)
         
     Returns:
         True if successful, False otherwise
     """
+    if rpc_manager is None:
+        rpc_manager = get_rpc_manager()
     try:
         # Check if input file exists
         if not os.path.exists(input_file):
@@ -668,29 +818,19 @@ def checkEligibility(contract_address: str, rpc_endpoint: str, input_file: str =
                 
                 data_payload = is_eligible_selector + address_param
                 
-                # Make the eth_call
-                payload = {
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "eth_call",
-                    "params": [
-                        {
-                            "to": contract_address,
-                            "data": data_payload
-                        },
-                        "latest"
-                    ]
-                }
+                # Make the eth_call using round-robin RPC manager
+                result = rpc_manager.rpc_call("eth_call", [
+                    {
+                        "to": contract_address,
+                        "data": data_payload
+                    },
+                    "latest"
+                ], timeout=10)
                 
-                response = requests.post(rpc_endpoint, json=payload, timeout=10)
-                response.raise_for_status()
-                
-                result = response.json()
-                
-                if "result" in result and result["result"] != "0x":
+                if result and result != "0x":
                     # Parse the result (bool)
                     # The result is a 32-byte hex string, bool is the last byte
-                    is_eligible = int(result["result"], 16) != 0
+                    is_eligible = int(result, 16) != 0
                     indexer["is_eligible"] = is_eligible
                     if is_eligible:
                         eligible_count += 1
@@ -736,28 +876,18 @@ def checkEligibility(contract_address: str, rpc_endpoint: str, input_file: str =
                 
                 data_payload = renewal_time_selector + address_param
                 
-                # Make the eth_call
-                payload = {
-                    "jsonrpc": "2.0",
-                    "id": 1,
-                    "method": "eth_call",
-                    "params": [
-                        {
-                            "to": contract_address,
-                            "data": data_payload
-                        },
-                        "latest"
-                    ]
-                }
+                # Make the eth_call using round-robin RPC manager
+                result = rpc_manager.rpc_call("eth_call", [
+                    {
+                        "to": contract_address,
+                        "data": data_payload
+                    },
+                    "latest"
+                ], timeout=10)
                 
-                response = requests.post(rpc_endpoint, json=payload, timeout=10)
-                response.raise_for_status()
-                
-                result = response.json()
-                
-                if "result" in result and result["result"] != "0x":
+                if result and result != "0x":
                     # Parse the result (uint256 timestamp)
-                    renewal_time = int(result["result"], 16)
+                    renewal_time = int(result, 16)
                     indexer["eligibility_renewal_time"] = renewal_time
                     updated_count += 1
                 else:
@@ -1178,7 +1308,7 @@ def renderIndexerTable(json_file: str = 'active_indexers.json') -> List[dict]:
         return []
 
 
-def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: str, api_key: Optional[str] = None, rpc_endpoint: Optional[str] = None) -> str:
+def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: str, api_key: Optional[str] = None, rpc_manager: Optional[RoundRobinRPC] = None) -> str:
     """
     Generate the HTML dashboard content.
     
@@ -1216,14 +1346,16 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     # Fetch oracle update time from contract
     print("Fetching oracle update time from contract...")
     oracle_update_time: Optional[int] = None
-    if rpc_endpoint:
-        oracle_update_time = get_oracle_update_time(contract_address, rpc_endpoint)
+    if rpc_manager is None:
+        rpc_manager = get_rpc_manager()
+    if rpc_manager.endpoints:
+        oracle_update_time = get_oracle_update_time(contract_address, rpc_manager)
     
     # Fetch eligibility period from contract
     print("Fetching eligibility period from contract...")
     eligibility_period: Optional[int] = None
-    if rpc_endpoint:
-        eligibility_period = get_eligibility_period(contract_address, rpc_endpoint)
+    if rpc_manager.endpoints:
+        eligibility_period = get_eligibility_period(contract_address, rpc_manager)
     
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
@@ -2587,8 +2719,10 @@ def main():
     use_cached_ens = os.getenv("USE_CACHED_ENS", "N").upper() == "Y"
     contract_address = os.getenv("CONTRACT_ADDRESS")
     api_key = os.getenv("ARBISCAN_API_KEY")
-    rpc_endpoint = os.getenv("RPC_ENDPOINT")
     grace_buffer_hours = int(os.getenv("GRACE_BUFFER_PERIOD_HOURS", "24"))
+    
+    # Initialize round-robin RPC manager
+    rpc_manager = get_rpc_manager()
     
     # Get transaction hash first (before retrieving active indexers)
     # Always fetch fresh data, don't use cached JSON for initial metadata
@@ -2617,7 +2751,7 @@ def main():
             print("   Fetching fresh ENS data from subgraph")
         print("=" * 60)
         print()
-        retrieveActiveIndexers(graph_api_key, use_cached_ens=use_cached_ens, contract_address=contract_address, rpc_endpoint=rpc_endpoint, transaction_hash=transaction_hash)
+        retrieveActiveIndexers(graph_api_key, use_cached_ens=use_cached_ens, contract_address=contract_address, rpc_manager=rpc_manager, transaction_hash=transaction_hash)
         print()
     else:
         print("⚠ GRAPH_API_KEY not set, skipping active indexers retrieval")
@@ -2638,8 +2772,8 @@ def main():
         missing_vars.append("CONTRACT_ADDRESS")
     if not api_key:
         missing_vars.append("ARBISCAN_API_KEY")
-    if not rpc_endpoint:
-        missing_vars.append("RPC_ENDPOINT")
+    if not rpc_manager.endpoints:
+        missing_vars.append("RPC_ENDPOINT or RPC_ENDPOINT_1, RPC_ENDPOINT_2, etc.")
     
     if missing_vars:
         print("❌ Error: Required environment variables are missing:")
@@ -2647,6 +2781,9 @@ def main():
             print(f"  - {var}")
         print()
         print("Please set these variables in your .env file.")
+        print("For RPC endpoints, you can use:")
+        print("  - RPC_ENDPOINT (single endpoint, backward compatible)")
+        print("  - RPC_ENDPOINT_1, RPC_ENDPOINT_2, etc. (multiple endpoints for round-robin)")
         print("See .env.example for the required format.")
         return
     
@@ -2654,7 +2791,7 @@ def main():
     print()
     
     # Check eligibility for each indexer by calling the contract
-    checkEligibility(contract_address, rpc_endpoint, grace_buffer_hours=grace_buffer_hours)
+    checkEligibility(contract_address, rpc_manager=rpc_manager, grace_buffer_hours=grace_buffer_hours)
     print()
     
     # Update status change dates by comparing with previous run
@@ -2678,7 +2815,7 @@ def main():
         print("ℹ️ Telegram notifications disabled (module not available)")
         print()
     
-    html_content = generate_html_dashboard(indexers, contract_address=contract_address, api_key=api_key, rpc_endpoint=rpc_endpoint)
+    html_content = generate_html_dashboard(indexers, contract_address=contract_address, api_key=api_key, rpc_manager=rpc_manager)
     
     # Write to index.html
     with open('index.html', 'w', encoding='utf-8') as file:

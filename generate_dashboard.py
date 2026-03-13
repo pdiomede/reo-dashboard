@@ -38,14 +38,12 @@ class RoundRobinRPC:
             self.endpoints.append(rpc_endpoint)
         
         # Try RPC_ENDPOINT_1, RPC_ENDPOINT_2, etc.
-        i = 1
-        while True:
+        # Check up to 20 endpoints to allow for gaps (e.g., RPC_ENDPOINT_1 and RPC_ENDPOINT_3)
+        # This prevents missing endpoints if someone skips a number
+        for i in range(1, 21):
             endpoint = os.getenv(f"RPC_ENDPOINT_{i}")
             if endpoint:
                 self.endpoints.append(endpoint)
-                i += 1
-            else:
-                break
         
         # Remove duplicates while preserving order
         seen = set()
@@ -184,12 +182,6 @@ def get_rpc_manager() -> RoundRobinRPC:
         _rpc_manager = RoundRobinRPC()
     return _rpc_manager
 
-# Import telegram notifier (will be skipped if module not available)
-try:
-    import telegram_notifier
-    TELEGRAM_AVAILABLE = True
-except ImportError:
-    TELEGRAM_AVAILABLE = False
 
 
 def get_last_transaction_from_json(json_file: str = 'last_transaction.json') -> Optional[dict]:
@@ -1362,7 +1354,33 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Eligibility Dashboard</title>
+    <meta name="description" content="Live dashboard showing REO eligibility status for all active indexers on The Graph Network — updated automatically.">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="Paolo Diomede — Graph Tools Pro">
+
+    <!-- Open Graph (Facebook, LinkedIn, Discord, Telegram, WhatsApp) -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Graph Tools Pro">
+    <meta property="og:title" content="REO Eligibility Dashboard — Graph Tools Pro">
+    <meta property="og:description" content="Live dashboard showing REO eligibility status for all active indexers on The Graph Network. Filter by eligible, grace period, or ineligible — updated automatically.">
+    <meta property="og:url" content="https://graphtools.pro/reo">
+    <meta property="og:image" content="https://graphtools.pro/reo/images/social-card.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="REO Eligibility Dashboard — Graph Tools Pro">
+
+    <!-- X / Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@graphtronauts_c">
+    <meta name="twitter:creator" content="@pdiomede">
+    <meta name="twitter:title" content="REO Eligibility Dashboard — Graph Tools Pro">
+    <meta name="twitter:description" content="Live dashboard showing REO eligibility status for all active indexers on The Graph Network. Filter by eligible, grace period, or ineligible — updated automatically.">
+    <meta name="twitter:image" content="https://graphtools.pro/reo/images/social-card.png">
+    <meta name="twitter:image:alt" content="REO Eligibility Dashboard — Graph Tools Pro">
+
+    <title>REO Eligibility Dashboard — Graph Tools Pro</title>
+    <link rel="canonical" href="https://graphtools.pro/reo">
+    <link rel="icon" type="image/png" href="https://graphtools.pro/favicon.ico">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         * {{
@@ -1379,66 +1397,37 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         }}
         
         .breadcrumb {{
+            font-size: 0.85em;
+            font-weight: 500;
+            letter-spacing: 0.2px;
             max-width: 1200px;
             margin: 0 auto 15px auto;
-            padding: 12px 20px;
-            background: rgba(12, 10, 29, 0.6);
-            border-radius: 8px;
-            border: 1px solid #9CA3AF;
-            color: #F8F6FF;
-            font-size: 14px;
             display: flex;
             align-items: center;
-            gap: 8px;
-        }}
-        
-        .breadcrumb a {{
+            gap: 6px;
             color: #9CA3AF;
-            text-decoration: none;
-            transition: color 0.3s ease;
+        }}
+
+        .breadcrumb a.home-link {{
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-        }}
-        
-        .breadcrumb a:hover {{
-            color: #F8F6FF;
-        }}
-        
-        .breadcrumb-separator {{
+            gap: 5px;
             color: #9CA3AF;
-            margin: 0 4px;
-            font-weight: 300;
+            text-decoration: none;
+            transition: color 0.2s;
         }}
-        
-        .home-icon {{
-            width: 16px;
-            height: 16px;
-            display: inline-block;
-            position: relative;
+
+        .breadcrumb a.home-link:hover {{
+            color: #4C66FF;
         }}
-        
-        .home-icon::before {{
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: 0;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 8px solid transparent;
-            border-right: 8px solid transparent;
-            border-bottom: 8px solid currentColor;
+
+        .breadcrumb a.home-link svg {{
+            flex-shrink: 0;
         }}
-        
-        .home-icon::after {{
-            content: '';
-            position: absolute;
-            left: 2px;
-            bottom: 0;
-            width: 12px;
-            height: 9px;
-            background-color: currentColor;
+
+        .breadcrumb .sep {{
+            opacity: 0.4;
+            font-size: 1em;
         }}
         
         .container {{
@@ -1498,8 +1487,8 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         }}
         
         .search-wrapper {{
-            flex: 0 0 45%;
-            min-width: 300px;
+            flex: 1 1 200px;
+            min-width: 0;
             max-width: 500px;
         }}
         
@@ -1586,26 +1575,6 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         
         .legend-description {{
             color: #9CA3AF;
-        }}
-        
-        .gip-banner {{
-            padding: 15px 30px;
-            background: #0C0A1D;
-            border-bottom: 1px solid #9CA3AF;
-            text-align: center;
-            font-size: 14px;
-            color: #9CA3AF;
-        }}
-        
-        .gip-banner a {{
-            color: #9CA3AF;
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }}
-        
-        .gip-banner a:hover {{
-            color: #F8F6FF;
-            text-decoration: underline;
         }}
         
         .counters-section {{
@@ -2059,76 +2028,153 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
             margin-right: 5px;
         }}
         
-        .bell-icon {{
-            fill: #F8F6FF;
-            width: 16px;
-            height: 16px;
-            vertical-align: middle;
-            margin-right: 5px;
-        }}
-        
         @media (max-width: 768px) {{
+            body {{ padding: 10px; }}
+
             .container {{
-                margin: 10px;
+                margin: 0;
                 border-radius: 10px;
             }}
-            
+
             .header {{
                 padding: 20px;
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 15px;
-            }}
-            
-            .title-container {{
                 gap: 10px;
             }}
-            
+
+            .title-container {{ gap: 10px; }}
+
             .header-icon {{
-                width: 40px;
-                height: 40px;
+                width: 36px;
+                height: 36px;
             }}
-            
-            .header h1 {{
-                font-size: 1.8em;
+
+            .header h1 {{ font-size: 1.6em; }}
+
+            .header .subtitle {{ font-size: 0.85em; white-space: normal; }}
+
+            .search-container {{
+                padding: 16px;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
             }}
-            
-            .search-container, .table-container {{
-                padding: 20px;
+
+            .search-wrapper {{
+                max-width: 100%;
             }}
-            
+
+            .filter-wrapper {{
+                flex-wrap: wrap;
+                gap: 8px;
+            }}
+
+            .filter-label {{ width: 100%; margin-right: 0; }}
+
+            .filter-btn {{
+                flex: 1 1 auto;
+                text-align: center;
+            }}
+
+            .table-container {{ padding: 12px; }}
+
             .footer-top {{
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 12px;
             }}
-            
+
             .footer-left,
             .footer-right {{
                 text-align: left;
                 width: 100%;
             }}
-            
+
             .counters-section {{
-                flex-direction: column;
-                padding: 20px;
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                padding: 16px;
+                gap: 16px;
             }}
-            
+
+            .counter-item {{ gap: 4px; }}
+            .counter-value {{ font-size: 26px; }}
+
             .stats {{
                 flex-direction: column;
-                gap: 10px;
+                gap: 6px;
                 text-align: center;
+                padding: 14px 16px;
+            }}
+        }}
+
+        /* Card-table layout for mobile: hide the traditional table,
+           show each row as a stacked card instead */
+        @media (max-width: 600px) {{
+            table {{ border: none; box-shadow: none; background: transparent; }}
+
+            thead {{ display: none; }}
+
+            tbody tr {{
+                display: block;
+                background: #13112A;
+                border: 1px solid rgba(111, 76, 255, 0.25);
+                border-radius: 10px;
+                margin-bottom: 12px;
+                overflow: hidden;
+            }}
+
+            tbody tr:hover {{ background: #1A1833; }}
+
+            /* Reset alternating row colours — cards handle their own bg */
+            tbody tr:nth-child(even) {{ background: #13112A; }}
+            tbody tr:nth-child(even):hover {{ background: #1A1833; }}
+
+            tbody td {{
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 10px 14px;
+                border-bottom: 1px solid rgba(255,255,255,0.06);
+                font-size: 13px;
+                gap: 10px;
+            }}
+
+            tbody td:last-child {{ border-bottom: none; }}
+
+            /* Label on the left, value on the right */
+            tbody td::before {{
+                content: attr(data-label);
+                color: #9CA3AF;
+                font-size: 11px;
+                font-weight: 600;
+                text-transform: uppercase;
+                letter-spacing: 0.07em;
+                flex-shrink: 0;
+                margin-right: 8px;
+            }}
+
+            /* Address wrapping inside card */
+            .address {{
+                font-size: 12px;
+                word-break: break-all;
+                text-align: right;
+            }}
+
+            .counters-section {{
+                grid-template-columns: 1fr 1fr;
             }}
         }}
     </style>
 </head>
 <body>
     <div class="breadcrumb">
-        <a href="../index.html">
-            <span class="home-icon"></span>
-            <b>Home</b>
+        <a href="https://graphtools.pro" class="home-link">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            Home
         </a>
-        <span class="breadcrumb-separator">>></span>
+        <span class="sep">›</span>
         <span>REO Eligibility Dashboard</span>
     </div>
     
@@ -2138,7 +2184,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 <img src="grt.png" alt="GRT" class="header-icon">
                 <h1>Eligibility Dashboard</h1>
             </div>
-            <div class="subtitle">Last Update: {current_time}</div>
+            <div class="subtitle">Last Update: {current_time}<br><span style="color: #9CA3AF; font-size: 0.85em;">Dashboard updates every 8 hours (02:00, 10:00, 18:00 UTC)</span></div>
         </div>"""
     
     # Calculate counters
@@ -2149,9 +2195,6 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     
     html_content += f"""
         
-        <div class="gip-banner">
-            <svg class="bell-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg><a href="https://t.me/reo_dashboard_bot" target="_blank">Subscribe to real-time notifications on Telegram</a>
-        </div>
         
         <div class="counters-section">
             <div class="counter-item">
@@ -2265,12 +2308,13 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         else:
             eligible_until_cell = ""
         
+        address_short = f"{address[:7]}...{address[-7:]}" if len(address) > 14 else address
         html_content += f"""                    <tr>
-                        <td><a href="{explorer_url}" target="_blank" class="address-link"><span class="address">{address}</span><svg class="external-link-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2.5a.5.5 0 0 0-.5-.5h-6a.5.5 0 0 0 0 1h4.793L8.146 7.146a.5.5 0 0 0 .708.708L13 3.707V8.5a.5.5 0 0 0 1 0v-6z"/><path d="M4.5 4a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V9a.5.5 0 0 0-1 0v3H5V5h3a.5.5 0 0 0 0-1h-3.5z"/></svg></a></td>
-                        <td><span class="{ens_class}">{ens_display}</span></td>
-                        <td>{status_badge}</td>
-                        <td>{last_renewed_cell}</td>
-                        <td>{eligible_until_cell}</td>
+                        <td data-label="Address"><a href="{explorer_url}" target="_blank" class="address-link" title="{address}"><span class="address">{address_short}</span><svg class="external-link-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2.5a.5.5 0 0 0-.5-.5h-6a.5.5 0 0 0 0 1h4.793L8.146 7.146a.5.5 0 0 0 .708.708L13 3.707V8.5a.5.5 0 0 0 1 0v-6z"/><path d="M4.5 4a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V9a.5.5 0 0 0-1 0v3H5V5h3a.5.5 0 0 0 0-1h-3.5z"/></svg></a></td>
+                        <td data-label="ENS"><span class="{ens_class}">{ens_display}</span></td>
+                        <td data-label="Status">{status_badge}</td>
+                        <td data-label="Last Renewed">{last_renewed_cell}</td>
+                        <td data-label="Eligible Until">{eligible_until_cell}</td>
                     </tr>
 """
 
@@ -2518,11 +2562,11 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 
                 const rowHTML = `
                     <tr>
-                        <td><a href="${explorerUrl}" target="_blank" class="address-link"><span class="address">${address}</span><svg class="external-link-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2.5a.5.5 0 0 0-.5-.5h-6a.5.5 0 0 0 0 1h4.793L8.146 7.146a.5.5 0 0 0 .708.708L13 3.707V8.5a.5.5 0 0 0 1 0v-6z"/><path d="M4.5 4a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V9a.5.5 0 0 0-1 0v3H5V5h3a.5.5 0 0 0 0-1h-3.5z"/></svg></a></td>
-                        <td><span class="${ensClass}">${ensDisplay}</span></td>
-                        <td>${status}</td>
-                        <td>${lastRenewedCell}</td>
-                        <td>${eligibleUntilCell}</td>
+                        <td data-label="Address"><a href="${explorerUrl}" target="_blank" class="address-link" title="${address}"><span class="address">${address.length > 14 ? address.slice(0, 7) + '...' + address.slice(-7) : address}</span><svg class="external-link-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2.5a.5.5 0 0 0-.5-.5h-6a.5.5 0 0 0 0 1h4.793L8.146 7.146a.5.5 0 0 0 .708.708L13 3.707V8.5a.5.5 0 0 0 1 0v-6z"/><path d="M4.5 4a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V9a.5.5 0 0 0-1 0v3H5V5h3a.5.5 0 0 0 0-1h-3.5z"/></svg></a></td>
+                        <td data-label="ENS"><span class="${ensClass}">${ensDisplay}</span></td>
+                        <td data-label="Status">${status}</td>
+                        <td data-label="Last Renewed">${lastRenewedCell}</td>
+                        <td data-label="Eligible Until">${eligibleUntilCell}</td>
                     </tr>
                 `;
                 tableBody.innerHTML += rowHTML;
@@ -2576,7 +2620,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     # </div>
     # """
     
-    # Add footer with version, GitHub link, and Telegram bot
+    # Add footer with version and GitHub link
     html_content += f"""    
     <div class="footer">
         <div class="footer-content">
@@ -2801,19 +2845,6 @@ def main():
     # Log status changes to activity log
     logStatusChanges()
     print()
-    
-    # Send Telegram notifications about oracle update and status changes
-    if TELEGRAM_AVAILABLE:
-        try:
-            print("Sending Telegram notifications...")
-            telegram_notifier.send_notifications()
-            print()
-        except Exception as e:
-            print(f"⚠ Warning: Could not send Telegram notifications: {e}")
-            print()
-    else:
-        print("ℹ️ Telegram notifications disabled (module not available)")
-        print()
     
     html_content = generate_html_dashboard(indexers, contract_address=contract_address, api_key=api_key, rpc_manager=rpc_manager)
     

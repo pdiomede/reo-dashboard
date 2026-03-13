@@ -1,8 +1,8 @@
 {
   "metadata": {
-    "retrieved": "2025-10-20 14:33:46 UTC",
-    "total_count": 73,
-    "ens_resolved": 73
+    "retrieved": "2025-12-23 21:09:28 UTC",
+    "total_count": 71,
+    "ens_resolved": 71
   },
   "ens_resolutions": {
     "0xbdfb5ee5a2abf4fc7bb1bd1221067aef7f9de491": "upgradeindexer.eth",
@@ -26,7 +26,7 @@
     "0x2e8d26e9b0d280738728e71c37bf05e70a636238": "moonli.eth",
     "0x17def1a43a323c711c7a32101ecf41e58eff54a2": "rampdefi4.eth",
     "0x4d67938e9b07681526fe0345a45b770bba88c659": "4block-team.eth",
-    "0x326c584e0f0eab1f1f83c93cc6ae1acc0feba0bc": "graphtronauts-arbitrum.eth",
+    "0x326c584e0f0eab1f1f83c93cc6ae1acc0feba0bc": "graphtronauts-indexer.eth",
     "0x474e571ab6dd77489ec3c7ddf9cbc893fcba684c": "publicnode.eth",
     "0x3863a65ce278a240f9aa2a4b4a48493be59e6139": "indexer.nftx.eth",
     "0x269ebeee083ce6f70486a67dc8036a889bf322a9": "thomasblock.eth",
@@ -36,7 +36,6 @@
     "0xe63e935fba572784d5aa40715e372e7948bbdb12": "chorusone-thegraph.chorus-one.eth",
     "0xfeff9093f6b32d0e5cddba743b06a1fedb87c004": "p-ops2.eth",
     "0xeeeee689aa442c607105f29f06d00d2f748776b2": "grt.stakecn.eth",
-    "0x345c9a221e4caa15f78fb8078c441745de48a225": "0xfury.eth",
     "0xe19baa3de2e54ccb7a5c4454ebb588376319e407": "nexskills.eth",
     "0x6f8a032b4b1ee622ef2f0fc091bdbb98cfae81a3": "indexer.semiotic.eth",
     "0xfb168335f5a3868a03696904ed38fa95fd167c0e": "validatrium.eth",
@@ -71,7 +70,6 @@
     "0x8f689a83dd52eaa1d5ad6a40c46189b4a0d70b06": "art3mis-cloud.eth",
     "0x1b7e0068ca1d7929c8c56408d766e1510e54d98d": "suntzu-indexer-arb.eth",
     "0xaa988dcb035518bc0e20082a3148a5d3dfd1776d": "stake\ud83e\udd91squid-1.eth",
-    "0xf0e33495afe697dbe32168bd0743ba32ebb978a3": "blockonaut.eth",
     "0xe0ceec6daa59cc951f3f71d6fc4221e55ef6c386": "arb.stake-machine.eth",
     "0x0fd8fd1dc8162148cb9413062fe6c6b144335dbf": "a1.protofire.eth",
     "0x3e1536fc83cd5bed83a521a26034ff3e59c6a7c4": "differential-graph.eth",

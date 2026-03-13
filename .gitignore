@@ -45,10 +45,12 @@ active_indexers.json
 active_indexers_previous_run.json
 activity_log_indexers_status_changes.json
 
-# Telegram bot files
-subscribers_telegram.json
-logs/
-cron.log
 
 # Authentication files (contains sensitive data)
 allowed_people.txt
+
+# Local AI/editor settings (machine-specific)
+.claude/
+
+# Local scratch/backup files
+generate_dashboard.py.old

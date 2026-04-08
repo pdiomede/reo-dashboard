@@ -21,6 +21,16 @@ This system ensures that rewards are distributed only to indexers who actively s
 
 ## 🆕 Recent Updates
 
+**Version 0.0.19** (Apr 8, 2026):
+- 🔗 **Migrated to Arbitrum One mainnet** - Dashboard now tracks the production REO contract
+  - New contract address: `0x8ec2767a9d9ba02b4e09e8ff4fac2e14a340f304` on Arbitrum One
+  - Transaction links updated to `arbiscan.io`
+  - RPC endpoints updated to Arbitrum One mainnet
+- 🧹 **Project cleanup** - Removed Telegram bot components and unused files
+  - Removed all Telegram notification scripts and documentation
+  - Removed `ens_resolution.json` from version control (generated at runtime)
+  - Fixed RPC endpoint variable naming for correct round-robin loading
+
 **Version 0.0.18** (Nov 25, 2025):
 - 🔄 **Round-Robin RPC Endpoint Support**: Load balancing and failover for multiple RPC endpoints
   - Support for multiple RPC endpoints via `RPC_ENDPOINT_1`, `RPC_ENDPOINT_2`, etc. in `.env`

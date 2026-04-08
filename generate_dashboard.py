@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 import threading
 
 # Version of the dashboard generator
-VERSION = "0.0.18"
+VERSION = "0.0.19"
 
 
 class RoundRobinRPC:

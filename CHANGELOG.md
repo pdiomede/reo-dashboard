@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.0.19] - 2026-04-08
+
+### Changed
+- **Migrated to Arbitrum One mainnet** - Updated from Arbitrum Sepolia testnet to Arbitrum One mainnet
+  - New REO contract address: `0x8ec2767a9d9ba02b4e09e8ff4fac2e14a340f304` on Arbitrum One
+  - Arbiscan API chain ID updated from `421614` (Sepolia) to `42161` (Arbitrum One)
+  - Transaction links updated from `sepolia.arbiscan.io` to `arbiscan.io`
+  - RPC endpoints updated to Arbitrum One mainnet public endpoints
+
+### Removed
+- **Telegram bot components** - Removed all Telegram notification functionality
+  - Removed `telegram_bot.py`, `telegram_notifier.py`, `announce_update.py`
+  - Removed `deploy_bot.sh`, `telegram_bot_service.service`
+  - Removed `README_TelegramBOT.md`, `LOGGING.md`, `UTILS_COMMANDS.md`
+  - Removed `subscribers_telegram.json.example`, `last_telegram_notification.json.example`
+  - Removed Telegram bot dependency (`python-telegram-bot`) from `requirements.txt`
+  - Removed Telegram-related environment variables from `env.example`
+- **Duplicate and unused files** - Cleaned up project structure
+  - Removed duplicate `env.example` (kept `.env.example`)
+  - Removed `ens_resolution.json` from version control (now gitignored, generated at runtime)
+
+### Fixed
+- **RPC endpoint variable naming** - Fixed `RPC_ENDPOINT2/3/4` → `RPC_ENDPOINT_1/2/3` so round-robin correctly loads all configured endpoints
+
+---
+
 ## [0.0.18] - 2025-11-25
 
 ### Added

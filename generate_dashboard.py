@@ -237,7 +237,7 @@ def save_transaction_to_json(transaction_data: dict, json_file: str = 'last_tran
 
 def get_last_transaction(contract_address: str, api_key: str) -> Optional[dict]:
     """
-    Get the last transaction for a contract from Arbiscan API (Sepolia).
+    Get the last transaction for a contract from Arbiscan API (Arbitrum One).
     Uses Etherscan API V2 endpoint with txlist action, descending sort, and limit 1 for efficiency.
     
     Args:
@@ -255,7 +255,7 @@ def get_last_transaction(contract_address: str, api_key: str) -> Optional[dict]:
         "sort": "desc",  # Descending order (most recent first)
         "page": 1,
         "offset": 1,  # Only get the last transaction
-        "chainid": "421614",  # Arbitrum Sepolia chain ID
+        "chainid": "42161",  # Arbitrum One chain ID
         "apikey": api_key
     }
         
@@ -323,7 +323,7 @@ def get_last_transaction_via_rpc(contract_address: str, rpc_manager: Optional[Ro
 
         # Scan recent blocks for transactions to the contract
         # Based on QuickNode guide: iterate backwards from latest block
-        # On Arbitrum Sepolia, blocks are ~250ms apart
+        # On Arbitrum One, blocks are ~250ms apart
         # 50,000 blocks = roughly 3-4 hours of history
         scan_window = 50000
         starting_block = max(0, latest_int - scan_window)
@@ -1306,7 +1306,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
     
     Args:
         indexers: List of (address, ens_name) tuples (legacy parameter, not used)
-        contract_address: The Sepolia contract address
+        contract_address: The contract address
         api_key: Arbiscan API key
         
     Returns:
@@ -2298,7 +2298,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
         else:
             # If we have a transaction hash, make the date a link with external icon
             if last_renewed_on_tx:
-                last_renewed_cell = f'<a href="https://sepolia.arbiscan.io/tx/{last_renewed_on_tx}" target="_blank" class="transaction-hash">{eligibility_renewal_time_short}<svg class="external-link-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2.5a.5.5 0 0 0-.5-.5h-6a.5.5 0 0 0 0 1h4.793L8.146 7.146a.5.5 0 0 0 .708.708L13 3.707V8.5a.5.5 0 0 0 1 0v-6z"/><path d="M4.5 4a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V9a.5.5 0 0 0-1 0v3H5V5h3a.5.5 0 0 0 0-1h-3.5z"/></svg></a>'
+                last_renewed_cell = f'<a href="https://arbiscan.io/tx/{last_renewed_on_tx}" target="_blank" class="transaction-hash">{eligibility_renewal_time_short}<svg class="external-link-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2.5a.5.5 0 0 0-.5-.5h-6a.5.5 0 0 0 0 1h4.793L8.146 7.146a.5.5 0 0 0 .708.708L13 3.707V8.5a.5.5 0 0 0 1 0v-6z"/><path d="M4.5 4a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V9a.5.5 0 0 0-1 0v3H5V5h3a.5.5 0 0 0 0-1h-3.5z"/></svg></a>'
             else:
                 last_renewed_cell = eligibility_renewal_time_short
         
@@ -2548,7 +2548,7 @@ def generate_html_dashboard(indexers: List[Tuple[str, str]], contract_address: s
                 } else {
                     // If we have a transaction hash, make the date a link with external icon
                     if (lastRenewedOnTx) {
-                        lastRenewedCell = `<a href="https://sepolia.arbiscan.io/tx/${lastRenewedOnTx}" target="_blank" class="transaction-hash">${lastRenewedShort}<svg class="external-link-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2.5a.5.5 0 0 0-.5-.5h-6a.5.5 0 0 0 0 1h4.793L8.146 7.146a.5.5 0 0 0 .708.708L13 3.707V8.5a.5.5 0 0 0 1 0v-6z"/><path d="M4.5 4a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V9a.5.5 0 0 0-1 0v3H5V5h3a.5.5 0 0 0 0-1h-3.5z"/></svg></a>`;
+                        lastRenewedCell = `<a href="https://arbiscan.io/tx/${lastRenewedOnTx}" target="_blank" class="transaction-hash">${lastRenewedShort}<svg class="external-link-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M14 2.5a.5.5 0 0 0-.5-.5h-6a.5.5 0 0 0 0 1h4.793L8.146 7.146a.5.5 0 0 0 .708.708L13 3.707V8.5a.5.5 0 0 0 1 0v-6z"/><path d="M4.5 4a.5.5 0 0 0-.5.5v8a.5.5 0 0 0 .5.5h8a.5.5 0 0 0 .5-.5V9a.5.5 0 0 0-1 0v3H5V5h3a.5.5 0 0 0 0-1h-3.5z"/></svg></a>`;
                 } else {
                     lastRenewedCell = lastRenewedShort;
                     }

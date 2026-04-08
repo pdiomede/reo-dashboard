@@ -45,6 +45,9 @@ active_indexers.json
 active_indexers_previous_run.json
 activity_log_indexers_status_changes.json
 
+# ENS cache (generated at runtime)
+ens_resolution.json
+
 
 # Authentication files (contains sensitive data)
 allowed_people.txt
